@@ -1,68 +1,84 @@
-<script setup>
-import { ref, watch } from 'vue';
-import { loadState, saveState } from '../utils/Store.js';
-import Login from './Login.vue';
-
-const theme = ref(loadState('theme') || 'light')
-
-function toggleTheme() {
-  theme.value = theme.value == 'light' ? 'dark' : 'light'
-}
-
-watch(theme, () => {
-  document.documentElement.setAttribute('data-bs-theme', theme.value)
-  saveState('theme', theme.value)
-}, { immediate: true })
-
-</script>
-
 <template>
-  <nav class="navbar navbar-expand-md bg-codeworks border-bottom border-vue">
-    <div class="container gap-2">
-      <RouterLink :to="{ name: 'Home' }" class="d-flex align-items-center text-light">
-        <img class="navbar-brand" alt="logo" src="/img/cw-logo.png" height="45" />
-        <b class="fs-5">Vue Starter</b>
-      </RouterLink>
-      <!-- collapse button -->
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-links"
-        aria-controls="navbarText" aria-expanded="false" aria-label="Toggle navigation">
-        <span class="mdi mdi-menu text-light"></span>
+  <nav class="navbar navbar-expand-lg navbar-dark">
+    <div class="container-fluid">
+      <router-link to="/" class="navbar-brand d-flex align-items-center">
+        <span class="game-logo">BOSS BATTLE</span>
+      </router-link>
+      
+      <button 
+        class="navbar-toggler" 
+        type="button" 
+        data-bs-toggle="collapse" 
+        data-bs-target="#navbarNav" 
+        aria-controls="navbarNav" 
+        aria-expanded="false" 
+        aria-label="Toggle navigation"
+      >
+        <span class="navbar-toggler-icon"></span>
       </button>
-      <!-- collapsing menu -->
-      <div class="collapse navbar-collapse " id="navbar-links">
-        <ul class="navbar-nav">
-          <li>
-            <RouterLink :to="{ name: 'About' }" class="btn text-green selectable">
-              About
-            </RouterLink>
+      
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item">
+            <router-link to="/" class="nav-link">Home</router-link>
+          </li>
+          <li class="nav-item">
+            <router-link to="/battle" class="nav-link">Battle</router-link>
+          </li>
+          <li class="nav-item">
+            <router-link to="/about" class="nav-link">About</router-link>
+          </li>
+          <li class="nav-item">
+            <router-link to="/account" class="nav-link">Account</router-link>
           </li>
         </ul>
-        <!-- LOGIN COMPONENT HERE -->
-        <div class="ms-auto">
-          <button class="btn text-light" @click="toggleTheme"
-            :title="`Enable ${theme == 'light' ? 'dark' : 'light'} theme.`">
-            <i v-if="theme == 'dark'" class="mdi mdi-weather-sunny"></i>
-            <i v-if="theme == 'light'" class="mdi mdi-weather-night"></i>
-          </button>
-        </div>
-        <Login />
       </div>
     </div>
   </nav>
 </template>
 
-<style lang="scss" scoped>
-a {
-  text-decoration: none;
+<script>
+export default {
+  name: 'Navbar'
+}
+</script>
+
+<style scoped lang="scss">
+.navbar {
+  background-color: #1a1a1a;
+  padding: 0.5rem 1rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.game-logo {
+  font-weight: bold;
+  font-size: 1.5rem;
+  letter-spacing: 0.1rem;
+  color: #ff7700;
+  text-shadow: 0 0 5px rgba(255, 119, 0, 0.5);
 }
 
 .nav-link {
-  text-transform: uppercase;
+  color: #fff;
+  margin: 0 0.5rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  
+  &:hover, &.router-link-active {
+    color: #ff7700;
+  }
+  
+  &.router-link-exact-active {
+    font-weight: bold;
+    text-decoration: underline;
+  }
 }
 
-.navbar-nav .router-link-exact-active {
-  border-bottom: 2px solid var(--bs-success);
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
+.navbar-toggler {
+  border-color: rgba(255, 119, 0, 0.5);
+  
+  &:focus {
+    box-shadow: 0 0 0 0.25rem rgba(255, 119, 0, 0.25);
+  }
 }
 </style>

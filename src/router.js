@@ -11,11 +11,15 @@ const routes = [
     name: 'Home',
     component: loadPage('HomePage')
   },
+  // TEMPORARILY REMOVED the Battle route because it's causing errors
+  // Instead, we're using an integrated battle interface in the HomePage
+  /*
   {
     path: '/battle',
     name: 'Battle',
     component: loadPage('BattlePage')
   },
+  */
   {
     path: '/about',
     name: 'About',
@@ -26,6 +30,11 @@ const routes = [
     name: 'Account',
     component: loadPage('AccountPage'),
     beforeEnter: authGuard
+  },
+  // Add a catch-all route to redirect any unknown routes to home
+  {
+    path: '/:pathMatch(.*)*',
+    redirect: '/'
   }
 ]
 

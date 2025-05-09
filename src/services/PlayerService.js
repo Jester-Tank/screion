@@ -1,4 +1,4 @@
-iimport { AppState } from "../AppState.js"
+import { AppState } from "../AppState.js"
 import { gameService } from "./GameService.js"
 import { combatService } from "./CombatService.js"
 

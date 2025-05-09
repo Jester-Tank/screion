@@ -13,22 +13,43 @@ class GameService {
      * @param {string} bossId - ID of the selected boss
      */
     startGame(playerId, bossId) {
+        console.log('Starting game with playerId:', playerId, 'and bossId:', bossId)
+
         // Get player and boss templates from predefined lists
         const playerTemplate = AppState.playerTemplates.find(p => p.id === playerId)
         const bossTemplate = AppState.bossTemplates.find(b => b.id === bossId)
 
-        if (!playerTemplate || !bossTemplate) {
-            throw new Error('Player or Boss not found')
+        if (!playerTemplate) {
+            console.error('Player template not found for ID:', playerId)
+            console.log('Available templates:', AppState.playerTemplates.map(p => p.id))
+            throw new Error(`Player with ID ${playerId} not found`)
         }
 
-        // Create new instances from templates
-        AppState.player = new Player(playerTemplate)
-        AppState.boss = new Boss(bossTemplate)
+        if (!bossTemplate) {
+            console.error('Boss template not found for ID:', bossId)
+            console.log('Available templates:', AppState.bossTemplates.map(b => b.id))
+            throw new Error(`Boss with ID ${bossId} not found`)
+        }
+
+        // Create new instances from templates with deep copy to avoid reference issues
+        AppState.player = new Player(JSON.parse(JSON.stringify(playerTemplate)))
+        AppState.boss = new Boss(JSON.parse(JSON.stringify(bossTemplate)))
+
+        // Make sure attacks are properly instantiated
+        AppState.player.attacks = AppState.player.attacks.map(a => new Attack(a))
+        AppState.boss.attacks = AppState.boss.attacks.map(a => new Attack(a))
 
         // Set initial game state
         AppState.battleActive = true
         AppState.playerTurn = AppState.player.speed >= AppState.boss.speed
         AppState.battleLog = [`Battle started! ${AppState.player.name} vs ${AppState.boss.name}`]
+
+        console.log('Game initialized with:', {
+            player: AppState.player,
+            boss: AppState.boss,
+            battleActive: AppState.battleActive,
+            playerTurn: AppState.playerTurn
+        })
 
         // If boss goes first, trigger boss turn
         if (!AppState.playerTurn) {

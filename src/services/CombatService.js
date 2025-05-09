@@ -9,9 +9,21 @@ class CombatService {
      * @returns {Object} - Result of the attack (damage dealt, effects, etc)
      */
     performAttack(attacker, target, attack) {
+        console.log('Performing attack:', {
+            attacker: attacker.name,
+            target: target.name,
+            attack: attack.name
+        })
+
+        if (!attacker || !target) {
+            console.error('Invalid attacker or target:', { attacker, target })
+            return { hit: false, damage: 0 }
+        }
+
         // Check if attack hits based on accuracy
         const hitRoll = Math.random() * 100
         if (hitRoll > attack.accuracy) {
+            console.log(`Attack missed: roll ${hitRoll} > accuracy ${attack.accuracy}`)
             AppState.battleLog.push(`${attacker.name}'s ${attack.name} missed!`)
             return { hit: false, damage: 0 }
         }
@@ -24,6 +36,13 @@ class CombatService {
 
         // Round damage to integer
         damage = Math.floor(damage)
+
+        console.log('Attack hit:', {
+            baseDamage: attack.damage,
+            attackerBonus: attacker.attack / 10,
+            defenseReduction: target.defense / 20,
+            finalDamage: damage
+        })
 
         // Apply damage to target
         target.currentHealth = Math.max(0, target.currentHealth - damage)
@@ -39,6 +58,7 @@ class CombatService {
             const healAmount = Math.floor(attack.selfHeal + (attacker.attack / 20))
             attacker.currentHealth = Math.min(attacker.maxHealth, attacker.currentHealth + healAmount)
             AppState.battleLog.push(`${attacker.name} healed for ${healAmount} health!`)
+            console.log(`${attacker.name} healed for ${healAmount}`)
         }
 
         // Set attack on cooldown
@@ -46,14 +66,17 @@ class CombatService {
 
         // Check if target is defeated
         if (target.currentHealth <= 0) {
+            console.log(`${target.name} has been defeated!`)
             AppState.battleLog.push(`${target.name} has been defeated!`)
 
             // Handle end of battle based on who was defeated
             if (target === AppState.player) {
                 // Player lost
+                console.log('Player lost the battle')
                 AppState.battleActive = false
             } else if (target === AppState.boss) {
                 // Boss lost
+                console.log('Player won the battle')
                 AppState.battleActive = false
             }
         }

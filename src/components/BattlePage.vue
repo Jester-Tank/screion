@@ -105,13 +105,35 @@
 </template>
 
 <script>
-import { computed } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { AppState } from '../AppState'
 import { gameService } from '../services/GameService'
 import { playerService } from '../services/PlayerService'
+import { router } from '../router'
 
 export default {
   setup() {
+    // Mounted lifecycle hook
+    onMounted(() => {
+      // Check if battle is initialized
+      if (!AppState.player || !AppState.boss) {
+        console.warn('Battle page loaded without initialized battle state, redirecting to home')
+        router.push('/')
+        return
+      }
+      
+      console.log('Battle page mounted with state:', {
+        player: AppState.player,
+        boss: AppState.boss,
+        battleActive: AppState.battleActive
+      })
+    })
+    
+    // Watch for changes in battle state
+    watch(() => AppState.battleActive, (isActive) => {
+      console.log('Battle state changed:', isActive)
+    })
+    
     // Computed properties
     const player = computed(() => AppState.player)
     const boss = computed(() => AppState.boss)
@@ -140,16 +162,20 @@ export default {
     
     // Methods
     function useAttack(attack) {
+      console.log('Using attack:', attack)
       playerService.usePlayerAttack(attack)
     }
     
     function useItem(item) {
+      console.log('Using item:', item)
       playerService.usePlayerItem(item)
     }
     
     function resetGame() {
+      console.log('Resetting game')
       gameService.resetGame()
-      // Redirect to character selection or home page
+      // Redirect to home page
+      router.push('/')
     }
     
     return {
