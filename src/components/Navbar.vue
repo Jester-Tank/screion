@@ -22,9 +22,7 @@
           <li class="nav-item">
             <router-link to="/" class="nav-link">Home</router-link>
           </li>
-          <li class="nav-item">
-            <router-link to="/battle" class="nav-link">Battle</router-link>
-          </li>
+          <!-- Battle link removed - now integrated in Homepage -->
           <li class="nav-item">
             <router-link to="/about" class="nav-link">About</router-link>
           </li>
