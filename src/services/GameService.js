@@ -1,6 +1,6 @@
 import { AppState } from "../AppState.js"
-import { Boss } from "../models/Boss.js"
 import { Player } from "../models/Player.js"
+import { Boss } from "../models/Boss.js"
 import { Attack } from "../models/Attack.js"
 import { bossService } from "./BossService.js"
 import { playerService } from "./PlayerService.js"
@@ -8,52 +8,77 @@ import { combatService } from "./CombatService.js"
 
 class GameService {
     /**
-     * Initializes a new game with selected player and boss
-     * @param {string} playerId - ID of the selected player template
-     * @param {string} bossId - ID of the selected boss
+     * Starts a new battle with selected player and boss
      */
-    startGame(playerId, bossId) {
-        console.log('Starting game with playerId:', playerId, 'and bossId:', bossId)
+    startBattle() {
+        if (!AppState.selectedHero || !AppState.selectedEnemy) return
 
-        // Get player and boss templates from predefined lists
-        const playerTemplate = AppState.playerTemplates.find(p => p.id === playerId)
-        const bossTemplate = AppState.bossTemplates.find(b => b.id === bossId)
+        console.log('Starting battle with:', {
+            hero: AppState.selectedHero,
+            enemy: AppState.selectedEnemy
+        })
 
-        if (!playerTemplate) {
-            console.error('Player template not found for ID:', playerId)
-            console.log('Available templates:', AppState.playerTemplates.map(p => p.id))
-            throw new Error(`Player with ID ${playerId} not found`)
+        // Get player and boss templates
+        const playerTemplate = AppState.playerTemplates.find(p => p.id === AppState.selectedHero)
+        const bossTemplate = AppState.bossTemplates.find(b => b.id === AppState.selectedEnemy)
+
+        if (!playerTemplate || !bossTemplate) {
+            console.error('Template not found:', {
+                playerTemplate,
+                bossTemplate,
+                selectedHero: AppState.selectedHero,
+                selectedEnemy: AppState.selectedEnemy
+            })
+            return
         }
 
-        if (!bossTemplate) {
-            console.error('Boss template not found for ID:', bossId)
-            console.log('Available templates:', AppState.bossTemplates.map(b => b.id))
-            throw new Error(`Boss with ID ${bossId} not found`)
-        }
+        // Initialize battle state
+        AppState.turnCount = 0
+        AppState.bossStunned = false
+        AppState.playerBurning = false
+        AppState.playerSlowed = false
+        AppState.playerBarrier = 0
+        AppState.playerDodging = false
+        AppState.battleLog = [`Battle started! ${playerTemplate.name} vs ${bossTemplate.name}`]
 
-        // Create new instances from templates with deep copy to avoid reference issues
+        // Create new instances to avoid modifying templates
         AppState.player = new Player(JSON.parse(JSON.stringify(playerTemplate)))
         AppState.boss = new Boss(JSON.parse(JSON.stringify(bossTemplate)))
 
-        // Make sure attacks are properly instantiated
-        AppState.player.attacks = AppState.player.attacks.map(a => new Attack(a))
-        AppState.boss.attacks = AppState.boss.attacks.map(a => new Attack(a))
+        // Reset health and convert attacks to Attack models
+        AppState.player.currentHealth = AppState.player.maxHealth
+        AppState.boss.currentHealth = AppState.boss.maxHealth
 
-        // Set initial game state
-        AppState.battleActive = true
-        AppState.playerTurn = AppState.player.speed >= AppState.boss.speed
-        AppState.battleLog = [`Battle started! ${AppState.player.name} vs ${AppState.boss.name}`]
-
-        console.log('Game initialized with:', {
-            player: AppState.player,
-            boss: AppState.boss,
-            battleActive: AppState.battleActive,
-            playerTurn: AppState.playerTurn
+        AppState.player.attacks = AppState.player.attacks.map(attack => {
+            const attackModel = new Attack(attack)
+            attackModel.currentCooldown = 0
+            return attackModel
         })
 
-        // If boss goes first, trigger boss turn
+        AppState.boss.attacks = AppState.boss.attacks.map(attack => {
+            const attackModel = new Attack(attack)
+            attackModel.currentCooldown = 0
+            return attackModel
+        })
+
+        // Initialize status effects arrays
+        AppState.player.statusEffects = []
+        AppState.boss.statusEffects = []
+
+        // Determine who goes first based on speed
+        AppState.playerTurn = AppState.player.speed >= AppState.boss.speed
+
+        // Set battle as active
+        AppState.battleActive = true
+
+        // Switch to battle mode
+        AppState.battleMode = true
+
+        // If boss goes first, start boss turn
         if (!AppState.playerTurn) {
-            this.processBossTurn()
+            setTimeout(() => {
+                this.processBossTurn()
+            }, 1000)
         }
     }
 
@@ -63,14 +88,16 @@ class GameService {
     endPlayerTurn() {
         if (!AppState.battleActive || !AppState.playerTurn) return
 
-        // Process cooldowns and status effects
+        // Process cooldowns and status effects for player
         playerService.processEndOfTurn()
 
         // Switch turn
         AppState.playerTurn = false
 
-        // Process boss turn
-        this.processBossTurn()
+        // Process boss turn after a slight delay
+        setTimeout(() => {
+            this.processBossTurn()
+        }, 1000)
     }
 
     /**
@@ -80,28 +107,59 @@ class GameService {
         // Check if battle should continue
         if (!AppState.battleActive) return
 
-        // Add slight delay for better UX
-        setTimeout(() => {
-            // Boss selects and performs an attack
-            const bossAttack = bossService.selectBossAttack()
-            combatService.performAttack(AppState.boss, AppState.player, bossAttack)
+        // Process status effects at start of boss turn
+        combatService.processStatusEffects(AppState.boss)
 
-            // Process boss end of turn effects
-            bossService.processEndOfTurn()
+        // Check if boss should skip turn
+        if (combatService.shouldSkipTurn(AppState.boss)) {
+            AppState.battleLog.push(`${AppState.boss.name} is stunned and cannot attack!`)
+            AppState.bossStunned = false // Remove stun after one turn
+            AppState.playerTurn = true // Back to player's turn
+            return
+        }
 
-            // Check if player is defeated
-            if (AppState.player.currentHealth <= 0) {
-                this.endBattle(false)
-                return
-            }
+        // Select and perform boss attack
+        const bossAttack = bossService.selectBossAttack()
 
-            // Switch turn back to player
-            AppState.playerTurn = true
-        }, 1000)
+        // Check for dodge
+        if (AppState.playerDodging) {
+            AppState.battleLog.push(`${AppState.boss.name} attacks but ${AppState.player.name} dodges!`)
+            AppState.playerDodging = false // Remove dodge after one use
+            AppState.playerTurn = true // Back to player's turn
+            return
+        }
+
+        // Boss attack miss chance
+        if (Math.random() > AppState.boss.attackChance) {
+            AppState.battleLog.push(`${AppState.boss.name}'s attack missed!`)
+            AppState.playerTurn = true // Back to player's turn
+            return
+        }
+
+        // Perform the attack
+        combatService.performAttack(AppState.boss, AppState.player, bossAttack)
+
+        // Process boss end of turn effects
+        bossService.processEndOfTurn()
+
+        // Check if player is defeated
+        if (AppState.player.currentHealth <= 0) {
+            this.endBattle(false)
+            return
+        }
+
+        // Switch turn back to player
+        AppState.playerTurn = true
+
+        // Clear player slowed effect after one turn
+        if (AppState.playerSlowed) {
+            AppState.playerSlowed = false
+            AppState.battleLog.push(`${AppState.player.name} is no longer slowed.`)
+        }
     }
 
     /**
-     * Ends the battle and sets the outcome
+     * Ends the battle and handles outcome
      * @param {boolean} playerWon - Whether the player won
      */
     endBattle(playerWon) {
@@ -109,22 +167,57 @@ class GameService {
 
         if (playerWon) {
             AppState.battleLog.push(`${AppState.player.name} has defeated ${AppState.boss.name}!`)
-            // Handle rewards, experience, etc.
-            playerService.awardVictory(AppState.boss)
+            this.awardVictory()
         } else {
             AppState.battleLog.push(`${AppState.player.name} has been defeated by ${AppState.boss.name}!`)
         }
     }
 
     /**
-     * Resets the game to start a new battle
+     * Awards victory rewards to the player
      */
-    resetGame() {
+    awardVictory() {
+        // Award gold based on boss
+        const goldEarned = AppState.boss.goldReward
+        AppState.gold += goldEarned
+        AppState.battleLog.push(`You earned ${goldEarned} gold!`)
+
+        // Increase player level
+        AppState.playerLevel++
+        AppState.battleLog.push(`Your player level increased to ${AppState.playerLevel}!`)
+
+        // Save game progress
+        playerService.saveGameData()
+    }
+
+    /**
+     * Resets the battle to return to selection screen
+     */
+    resetBattle() {
+        // Reset battle state
+        AppState.battleMode = false
+        AppState.battleActive = false
+        AppState.selectedHero = null
+        AppState.selectedEnemy = null
+        AppState.battleLog = ['Prepare for battle!']
+        AppState.turnCount = 0
+        AppState.bossStunned = false
+        AppState.playerBurning = false
+        AppState.playerSlowed = false
+        AppState.playerBarrier = 0
+        AppState.playerDodging = false
+
+        // Clear player and boss
         AppState.player = null
         AppState.boss = null
-        AppState.battleActive = false
-        AppState.playerTurn = false
-        AppState.battleLog = []
+    }
+
+    /**
+     * Checks if player is ready to start a battle
+     * @returns {boolean} - Whether both hero and enemy are selected
+     */
+    isReadyToFight() {
+        return AppState.selectedHero && AppState.selectedEnemy
     }
 }
 

@@ -6,6 +6,17 @@
         <div class="col-12 text-center mb-4">
           <h1 class="my-3">BOSS BATTLE</h1>
           <p>Defeat the fearsome enemies to become a hero!</p>
+          
+          <!-- Player Stats -->
+          <div class="player-stats mb-3">
+            <span class="badge bg-warning text-dark me-2">
+              <i class="fas fa-coins"></i> Gold: {{ gold }}
+            </span>
+            <span class="badge bg-info">
+              <i class="fas fa-star"></i> Level: {{ playerLevel }}
+            </span>
+            <button @click="resetProgress" class="btn btn-sm btn-outline-danger ms-2">Reset Progress</button>
+          </div>
         </div>
         
         <!-- Character Selection -->
@@ -14,20 +25,52 @@
             <div class="card-header">
               <h2>Choose Your Hero</h2>
             </div>
-            <div class="card-body d-flex flex-wrap justify-content-center">
-              <div 
-                v-for="character in characters" 
-                :key="character.id" 
-                class="character-card m-2"
-                :class="{ 'selected': selectedHero === character.id }"
-                @click="selectHero(character.id)"
-              >
-                <img :src="character.imgUrl" :alt="character.name" class="character-img">
-                <div class="p-2">
-                  <h5>{{ character.name }}</h5>
-                  <div class="d-flex justify-content-between">
-                    <span>HP: {{ character.maxHealth }}</span>
-                    <span>ATK: {{ character.attack }}</span>
+            <div class="card-body">
+              <h5>Unlocked Heroes</h5>
+              <div class="d-flex flex-wrap justify-content-center">
+                <div 
+                  v-for="character in filteredCharacters" 
+                  :key="character.id" 
+                  class="character-card m-2"
+                  :class="{ 'selected': selectedHero === character.id }"
+                  @click="selectHero(character.id)"
+                >
+                  <img :src="character.imgUrl" :alt="character.name" class="character-img" />
+                  <div class="p-2">
+                    <h5>{{ character.name }}</h5>
+                    <div class="d-flex justify-content-between">
+                      <span>HP: {{ character.maxHealth }}</span>
+                      <span>ATK: {{ character.attack }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Locked Characters -->
+              <h5 class="mt-4">Locked Heroes</h5>
+              <div class="d-flex flex-wrap justify-content-center">
+                <div 
+                  v-for="character in lockedCharacters" 
+                  :key="character.id" 
+                  class="character-card locked m-2"
+                >
+                  <div class="lock-overlay">
+                    <span class="lock-price">{{ characterCosts[character.id] }} <i class="fas fa-coins"></i></span>
+                    <button 
+                      @click="unlockCharacter(character.id)" 
+                      class="btn btn-sm btn-warning"
+                      :disabled="gold < characterCosts[character.id]"
+                    >
+                      Unlock
+                    </button>
+                  </div>
+                  <img :src="character.imgUrl" :alt="character.name" class="character-img" />
+                  <div class="p-2">
+                    <h5>{{ character.name }}</h5>
+                    <div class="d-flex justify-content-between">
+                      <span>HP: {{ character.maxHealth }}</span>
+                      <span>ATK: {{ character.attack }}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -41,18 +84,53 @@
             <div class="card-header">
               <h2>Choose Your Enemy</h2>
             </div>
-            <div class="card-body d-flex flex-wrap justify-content-center">
-              <div 
-                v-for="enemy in enemies" 
-                :key="enemy.id" 
-                class="boss-card m-2"
-                :class="{ 'selected': selectedEnemy === enemy.id }"
-                @click="selectEnemy(enemy.id)"
-              >
-                <img :src="enemy.imgUrl" :alt="enemy.name" class="boss-img">
-                <div class="p-2">
-                  <h5>{{ enemy.name }}</h5>
-                  <p>{{ enemy.description }}</p>
+            <div class="card-body">
+              <h5>Unlocked Enemies</h5>
+              <div class="d-flex flex-wrap justify-content-center">
+                <div 
+                  v-for="enemy in filteredEnemies" 
+                  :key="enemy.id" 
+                  class="boss-card m-2"
+                  :class="{ 'selected': selectedEnemy === enemy.id }"
+                  @click="selectEnemy(enemy.id)"
+                >
+                  <div class="reward-badge">
+                    {{ enemy.goldReward }} <i class="fas fa-coins"></i>
+                  </div>
+                  <img :src="enemy.imgUrl" :alt="enemy.name" class="boss-img" />
+                  <div class="p-2">
+                    <h5>{{ enemy.name }}</h5>
+                    <p>{{ enemy.description }}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Locked Enemies -->
+              <h5 class="mt-4">Locked Enemies</h5>
+              <div class="d-flex flex-wrap justify-content-center">
+                <div 
+                  v-for="enemy in lockedEnemies" 
+                  :key="enemy.id" 
+                  class="boss-card locked m-2"
+                >
+                  <div class="lock-overlay">
+                    <span class="lock-price">{{ enemyCosts[enemy.id] }} <i class="fas fa-coins"></i></span>
+                    <button 
+                      @click="unlockEnemy(enemy.id)" 
+                      class="btn btn-sm btn-warning"
+                      :disabled="gold < enemyCosts[enemy.id]"
+                    >
+                      Unlock
+                    </button>
+                  </div>
+                  <div class="reward-badge">
+                    {{ enemy.goldReward }} <i class="fas fa-coins"></i>
+                  </div>
+                  <img :src="enemy.imgUrl" :alt="enemy.name" class="boss-img" />
+                  <div class="p-2">
+                    <h5>{{ enemy.name }}</h5>
+                    <p>{{ enemy.description }}</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -91,7 +169,11 @@
                 </li>
                 <li>
                   <h5>Battle!</h5>
-                  <p>Use your attacks strategically to defeat the boss.</p>
+                  <p>Use your attacks strategically to defeat the boss. Some attacks have cooldowns before they can be used again.</p>
+                </li>
+                <li>
+                  <h5>Earn Gold</h5>
+                  <p>Defeat bosses to earn gold, which can be used to unlock new characters and enemies.</p>
                 </li>
               </ol>
             </div>
@@ -130,7 +212,13 @@
                   ></div>
                   <span class="health-text">{{ boss.currentHealth }} / {{ boss.maxHealth }}</span>
                 </div>
-                <img :src="boss.imgUrl" :alt="boss.name" class="battle-img my-3">
+                <img :src="boss.imgUrl" :alt="boss.name" class="battle-img my-3" />
+                
+                <!-- Status Effects -->
+                <div class="status-effects" v-if="boss.burning || bossStunned">
+                  <span v-if="boss.burning" class="badge bg-danger me-1">Burning</span>
+                  <span v-if="bossStunned" class="badge bg-warning text-dark">Stunned</span>
+                </div>
               </div>
               
               <!-- Player Section -->
@@ -146,7 +234,15 @@
                   ></div>
                   <span class="health-text">{{ player.currentHealth }} / {{ player.maxHealth }}</span>
                 </div>
-                <img :src="player.imgUrl" :alt="player.name" class="battle-img my-3">
+                <img :src="player.imgUrl" :alt="player.name" class="battle-img my-3" />
+                
+                <!-- Status Effects -->
+                <div class="status-effects">
+                  <span v-if="playerBarrier > 0" class="badge bg-primary me-1">Barrier: {{ playerBarrier }}</span>
+                  <span v-if="playerDodging" class="badge bg-info me-1">Dodging</span>
+                  <span v-if="playerBurning" class="badge bg-danger me-1">Burning</span>
+                  <span v-if="playerSlowed" class="badge bg-secondary">Slowed</span>
+                </div>
               </div>
             </div>
           </div>
@@ -180,7 +276,23 @@
                     <span v-if="attack.stun" class="badge bg-warning text-dark ms-1">Stun</span>
                     <span v-if="attack.burn" class="badge bg-danger ms-1">Burn</span>
                     <span v-if="attack.slow" class="badge bg-info ms-1">Slow</span>
+                    <span v-if="attack.multi" class="badge bg-secondary ms-1">Multi: {{ attack.multi }}</span>
+                    <span v-if="attack.barrier" class="badge bg-primary ms-1">Barrier</span>
+                    <span v-if="attack.dodge" class="badge bg-info ms-1">Dodge</span>
                   </button>
+                </div>
+                
+                <!-- Attacks on Cooldown -->
+                <h5 class="my-3">Attacks on Cooldown:</h5>
+                <div class="d-flex flex-wrap">
+                  <div 
+                    v-for="attack in attacksOnCooldown" 
+                    :key="attack.id"
+                    class="attack-cooldown m-1"
+                  >
+                    {{ attack.name }} 
+                    <span class="badge bg-secondary">{{ attack.currentCooldown }} turns</span>
+                  </div>
                 </div>
               </div>
               
@@ -191,8 +303,8 @@
               
               <!-- Battle Results -->
               <div v-else class="battle-results text-center">
-                <h3 v-if="player.currentHealth <= 0" class="text-danger">Defeat!</h3>
-                <h3 v-else-if="boss.currentHealth <= 0" class="text-success">Victory!</h3>
+                <h3 v-if="player && player.currentHealth <= 0" class="text-danger">Defeat!</h3>
+                <h3 v-else-if="boss && boss.currentHealth <= 0" class="text-success">Victory!</h3>
                 <button @click="resetBattle" class="btn btn-primary mt-3">Play Again</button>
               </div>
             </div>
@@ -220,296 +332,92 @@
 </template>
 
 <script>
+import { computed } from 'vue'
+import { AppState } from '../AppState.js'
+import { characterService } from '../services/CharacterService.js'
+import { enemyService } from '../services/EnemyService.js'
+import { gameService } from '../services/GameService.js'
+import { playerService } from '../services/PlayerService.js'
+import { combatService } from '../services/CombatService.js'
+
 export default {
   name: 'HomePage',
-  data() {
+  setup() {
+    // Load saved data on page load
+    characterService.loadGameData()
+    
     return {
-      selectedHero: null,
-      selectedEnemy: null,
-      battleMode: false,
-      characters: [
-        {
-          id: 'knight',
-          name: 'Knight',
-          maxHealth: 150,          // Increased health
-          currentHealth: 150,
-          attack: 15,              // Increased attack
-          defense: 10,             // Increased defense
-          imgUrl: 'https://placehold.co/200x200?text=Knight',
-          attacks: [
-            { id: 'slash', name: 'Slash', damage: 20, type: 'physical' },
-            { id: 'shield-bash', name: 'Shield Bash', damage: 15, type: 'physical', stun: true },
-            { id: 'heavy-blow', name: 'Heavy Blow', damage: 30, type: 'physical' },
-            { id: 'rally', name: 'Rally', damage: 0, type: 'support', heal: 25 }
-          ]
-        },
-        {
-          id: 'mage',
-          name: 'Mage',
-          maxHealth: 120,          // Increased health
-          currentHealth: 120,
-          attack: 20,              // Increased attack
-          defense: 5,
-          imgUrl: 'https://placehold.co/200x200?text=Mage',
-          attacks: [
-            { id: 'fireball', name: 'Fireball', damage: 25, type: 'magical', burn: true },
-            { id: 'ice-shard', name: 'Ice Shard', damage: 20, type: 'magical', slow: true },
-            { id: 'arcane-blast', name: 'Arcane Blast', damage: 35, type: 'magical' },
-            { id: 'heal', name: 'Heal', damage: 0, type: 'support', heal: 30 }
-          ]
+      // AppState data
+      gold: computed(() => AppState.gold),
+      playerLevel: computed(() => AppState.playerLevel),
+      selectedHero: computed(() => AppState.selectedHero),
+      selectedEnemy: computed(() => AppState.selectedEnemy),
+      battleMode: computed(() => AppState.battleMode),
+      battleActive: computed(() => AppState.battleActive),
+      playerTurn: computed(() => AppState.playerTurn),
+      battleLog: computed(() => AppState.battleLog),
+      characterCosts: computed(() => AppState.characterCosts),
+      enemyCosts: computed(() => AppState.enemyCosts),
+      player: computed(() => AppState.player),
+      boss: computed(() => AppState.boss),
+      bossStunned: computed(() => AppState.bossStunned),
+      playerBarrier: computed(() => AppState.playerBarrier),
+      playerDodging: computed(() => AppState.playerDodging),
+      playerBurning: computed(() => AppState.playerBurning),
+      playerSlowed: computed(() => AppState.playerSlowed),
+      
+      // Computed properties
+      filteredCharacters: computed(() => characterService.getFilteredCharacters()),
+      lockedCharacters: computed(() => characterService.getLockedCharacters()),
+      filteredEnemies: computed(() => enemyService.getFilteredEnemies()),
+      lockedEnemies: computed(() => enemyService.getLockedEnemies()),
+      availableAttacks: computed(() => AppState.player ? AppState.player.attacks.filter(a => a.currentCooldown === 0) : []),
+      attacksOnCooldown: computed(() => AppState.player ? AppState.player.attacks.filter(a => a.currentCooldown > 0) : []),
+      isReadyToFight: computed(() => gameService.isReadyToFight()),
+      
+      // Coordinator functions
+      selectHero(id) {
+        characterService.selectHero(id)
+      },
+      
+      selectEnemy(id) {
+        enemyService.selectEnemy(id)
+      },
+      
+      unlockCharacter(id) {
+        characterService.unlockCharacter(id)
+      },
+      
+      unlockEnemy(id) {
+        enemyService.unlockEnemy(id)
+      },
+      
+      startBattle() {
+        gameService.startBattle()
+      },
+      
+      resetBattle() {
+        gameService.resetBattle()
+      },
+      
+      resetProgress() {
+        if (confirm('Are you sure you want to reset all progress? This cannot be undone.')) {
+          const message = characterService.resetProgress()
+          alert(message)
         }
-      ],
-      enemies: [
-        {
-          id: 'dragon',
-          name: 'Ancient Dragon',
-          maxHealth: 200,
-          currentHealth: 200,
-          attack: 12,              // Decreased attack
-          defense: 8,
-          description: 'A fearsome dragon with fire breath and thick scales',
-          imgUrl: 'https://placehold.co/200x200?text=Dragon',
-          attackChance: 0.7        // 70% chance to hit
-        },
-        {
-          id: 'necromancer',
-          name: 'Dark Necromancer',
-          maxHealth: 180,
-          currentHealth: 180,
-          attack: 15,              // Decreased attack
-          defense: 5,
-          description: 'A sinister spellcaster with command over the dead',
-          imgUrl: 'https://placehold.co/200x200?text=Necromancer',
-          attackChance: 0.8        // 80% chance to hit
-        }
-      ],
-      // Battle state
-      playerTurn: true,
-      battleLog: ['Prepare for battle!'],
-      battleActive: false,
-      turnCount: 0,
-      bossStunned: false,
-      playerBurning: false,
-      playerSlowed: false
-    }
-  },
-  computed: {
-    isReadyToFight() {
-      return this.selectedHero && this.selectedEnemy
-    },
-    player() {
-      if (!this.selectedHero) return null
-      return this.characters.find(c => c.id === this.selectedHero)
-    },
-    boss() {
-      if (!this.selectedEnemy) return null
-      return this.enemies.find(e => e.id === this.selectedEnemy)
-    },
-    availableAttacks() {
-      if (!this.player) return []
-      return this.player.attacks
-    }
-  },
-  methods: {
-    selectHero(id) {
-      console.log('Selecting hero:', id)
-      this.selectedHero = id
-    },
-    selectEnemy(id) {
-      console.log('Selecting enemy:', id)
-      this.selectedEnemy = id
-    },
-    startBattle() {
-      if (!this.isReadyToFight) return
+      },
       
-      console.log('Starting battle with:', { 
-        hero: this.selectedHero, 
-        enemy: this.selectedEnemy 
-      })
+      useAttack(attack) {
+        playerService.usePlayerAttack(attack)
+      },
       
-      // Initialize battle state
-      this.battleActive = true
-      this.playerTurn = true
-      this.turnCount = 0
-      this.bossStunned = false
-      this.playerBurning = false
-      this.playerSlowed = false
-      this.battleLog = [`Battle started! ${this.player.name} vs ${this.boss.name}`]
+      healthPercent(current, max) {
+        return combatService.healthPercent(current, max)
+      },
       
-      // Reset health
-      this.player.currentHealth = this.player.maxHealth
-      this.boss.currentHealth = this.boss.maxHealth
-      
-      // Switch to battle mode
-      this.battleMode = true
-    },
-    useAttack(attack) {
-      if (!this.battleActive || !this.playerTurn) return
-      
-      this.turnCount++
-      
-      // Calculate base damage (increased player damage)
-      let damage = attack.damage + (this.player.attack / 5)  // Increased from /10 to /5
-      
-      // Apply defense reduction (reduced boss defense effect)
-      const defenseReduction = this.boss.defense / 30  // Reduced from /20 to /30
-      damage = Math.max(1, damage - defenseReduction)
-      
-      // Add some randomness
-      const critChance = 0.15  // 15% chance to critical hit
-      let isCrit = false
-      
-      if (Math.random() < critChance) {
-        damage *= 1.5  // 50% bonus damage on crit
-        isCrit = true
+      healthColor(current, max) {
+        return combatService.healthColor(current, max)
       }
-      
-      // Round damage to integer
-      damage = Math.floor(damage)
-      
-      // Apply damage
-      this.boss.currentHealth = Math.max(0, this.boss.currentHealth - damage)
-      
-      // Add to battle log
-      let logMessage = `${this.player.name} used ${attack.name} and dealt ${damage} damage!`
-      if (isCrit) {
-        logMessage += ' CRITICAL HIT!'
-      }
-      this.battleLog.push(logMessage)
-      
-      // Apply special effects
-      if (attack.stun && Math.random() < 0.4) {  // 40% chance to stun
-        this.bossStunned = true
-        this.battleLog.push(`${this.boss.name} is stunned!`)
-      }
-      
-      if (attack.burn && Math.random() < 0.4) {  // 40% chance to burn
-        this.boss.burning = true
-        this.battleLog.push(`${this.boss.name} is burning!`)
-      }
-      
-      // Apply healing
-      if (attack.heal) {
-        const healAmount = attack.heal
-        this.player.currentHealth = Math.min(this.player.maxHealth, this.player.currentHealth + healAmount)
-        this.battleLog.push(`${this.player.name} healed for ${healAmount} health!`)
-      }
-      
-      // Check for boss defeat
-      if (this.boss.currentHealth <= 0) {
-        this.battleLog.push(`${this.boss.name} has been defeated!`)
-        this.battleActive = false
-        return
-      }
-      
-      // Switch turn
-      this.playerTurn = false
-      
-      // Boss attacks after a short delay
-      setTimeout(() => {
-        this.bossTurn()
-      }, 1000)
-    },
-    bossTurn() {
-      if (!this.battleActive) return
-      
-      // Check if boss is stunned
-      if (this.bossStunned) {
-        this.battleLog.push(`${this.boss.name} is stunned and cannot attack!`)
-        this.bossStunned = false  // Remove stun after one turn
-        this.playerTurn = true  // Back to player's turn
-        return
-      }
-      
-      // Apply burn damage if boss is burning
-      if (this.boss.burning) {
-        const burnDamage = Math.floor(this.player.attack / 4)
-        this.boss.currentHealth = Math.max(0, this.boss.currentHealth - burnDamage)
-        this.battleLog.push(`${this.boss.name} takes ${burnDamage} burn damage!`)
-        
-        // Check for boss defeat from burn damage
-        if (this.boss.currentHealth <= 0) {
-          this.battleLog.push(`${this.boss.name} has been defeated by burn damage!`)
-          this.battleActive = false
-          return
-        }
-        
-        // 30% chance to remove burning
-        if (Math.random() < 0.3) {
-          this.boss.burning = false
-          this.battleLog.push(`${this.boss.name} is no longer burning.`)
-        }
-      }
-      
-      // Boss attack miss chance
-      if (Math.random() > this.boss.attackChance) {
-        this.battleLog.push(`${this.boss.name}'s attack missed!`)
-        this.playerTurn = true
-        return
-      }
-      
-      // Boss attack (reduced damage and more randomness)
-      const minDamage = Math.floor(this.boss.attack * 0.7)
-      const maxDamage = Math.floor(this.boss.attack * 1.2)
-      const damageRange = maxDamage - minDamage
-      let damage = minDamage + Math.floor(Math.random() * damageRange)
-      
-      // Apply player defense (increased effect)
-      const defenseReduction = this.player.defense / 15  // Increased from base level
-      damage = Math.max(1, damage - defenseReduction)
-      
-      // Apply damage
-      this.player.currentHealth = Math.max(0, this.player.currentHealth - damage)
-      
-      // Add to battle log
-      this.battleLog.push(`${this.boss.name} attacks and deals ${damage} damage!`)
-      
-      // Every 3rd turn, boss does something special
-      if (this.turnCount % 3 === 0) {
-        // 50% chance to heal a bit
-        if (Math.random() < 0.5) {
-          const healAmount = Math.floor(this.boss.maxHealth * 0.05)  // Only heal 5% of max health
-          this.boss.currentHealth = Math.min(this.boss.maxHealth, this.boss.currentHealth + healAmount)
-          this.battleLog.push(`${this.boss.name} recovers ${healAmount} health!`)
-        }
-      }
-      
-      // Check for player defeat
-      if (this.player.currentHealth <= 0) {
-        this.battleLog.push(`${this.player.name} has been defeated!`)
-        this.battleActive = false
-        return
-      }
-      
-      // Switch turn back to player
-      this.playerTurn = true
-      
-      // Clear player slowed effect after one turn
-      if (this.playerSlowed) {
-        this.playerSlowed = false
-        this.battleLog.push(`${this.player.name} is no longer slowed.`)
-      }
-    },
-    resetBattle() {
-      // Reset battle state
-      this.battleMode = false
-      this.battleActive = false
-      this.selectedHero = null
-      this.selectedEnemy = null
-      this.battleLog = ['Prepare for battle!']
-      this.turnCount = 0
-      this.bossStunned = false
-      this.playerBurning = false
-      this.playerSlowed = false
-    },
-    healthPercent(current, max) {
-      return (current / max) * 100
-    },
-    healthColor(current, max) {
-      const percent = (current / max) * 100
-      if (percent > 70) return '#4CAF50' // Green
-      if (percent > 40) return '#FFC107' // Yellow
-      return '#F44336' // Red
     }
   }
 }
@@ -525,6 +433,7 @@ export default {
   cursor: pointer;
   transition: all 0.3s ease;
   border: 2px solid transparent;
+  position: relative;
 }
 
 .character-card:hover, .boss-card:hover {
@@ -536,6 +445,54 @@ export default {
   border-color: #dc3545;
   transform: translateY(-5px);
   box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
+}
+
+/* Locked character styles */
+.character-card.locked, .boss-card.locked {
+  filter: grayscale(70%);
+  opacity: 0.8;
+  cursor: default;
+}
+
+.lock-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  color: white;
+}
+
+.lock-price {
+  font-weight: bold;
+  font-size: 1.2rem;
+  margin-bottom: 10px;
+  color: #ffc107;
+}
+
+/* Gold reward badge */
+.reward-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background-color: #ffc107;
+  color: #212529;
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-weight: bold;
+  font-size: 0.8rem;
+  z-index: 1;
+}
+
+/* Player stats */
+.player-stats {
+  font-size: 1.2rem;
 }
 
 .character-img, .boss-img, .battle-img {
@@ -580,6 +537,11 @@ export default {
   color: #212529;
   font-weight: bold;
   text-shadow: 0 0 2px rgba(255, 255, 255, 0.8);
+}
+
+/* Status Effects */
+.status-effects {
+  margin-top: 10px;
 }
 
 /* Battle Log Styles */
@@ -644,8 +606,37 @@ export default {
   text-align: center;
 }
 
+/* Attack Cooldowns */
+.attack-cooldown {
+  padding: 8px 12px;
+  background-color: #f8f9fa;
+  border-radius: 5px;
+  border: 1px solid #dee2e6;
+  opacity: 0.7;
+}
+
 /* Battle Results */
 .battle-results {
   padding: 20px;
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+  .character-card, .boss-card {
+    width: 160px;
+  }
+  
+  .character-img, .boss-img {
+    height: 100px;
+  }
+  
+  .lock-price {
+    font-size: 1rem;
+  }
+  
+  .reward-badge {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+  }
 }
 </style>

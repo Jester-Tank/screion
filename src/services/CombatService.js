@@ -1,4 +1,4 @@
-import { AppState } from "@/AppState.js"
+import { AppState } from "../AppState.js"
 
 class CombatService {
     /**
@@ -21,11 +21,17 @@ class CombatService {
         }
 
         // Check if attack hits based on accuracy
+        const accuracy = attack.accuracy || 95 // Default 95% accuracy if not specified
         const hitRoll = Math.random() * 100
-        if (hitRoll > attack.accuracy) {
-            console.log(`Attack missed: roll ${hitRoll} > accuracy ${attack.accuracy}`)
+        if (hitRoll > accuracy) {
+            console.log(`Attack missed: roll ${hitRoll} > accuracy ${accuracy}`)
             AppState.battleLog.push(`${attacker.name}'s ${attack.name} missed!`)
             return { hit: false, damage: 0 }
+        }
+
+        // Multi-hit attack handling
+        if (attack.multi) {
+            return this.handleMultiHitAttack(attacker, target, attack)
         }
 
         // Calculate base damage
@@ -34,6 +40,14 @@ class CombatService {
         // Apply defense reduction
         damage = Math.max(1, damage - (target.defense / 20))
 
+        // Handle critical hit
+        let isCrit = false
+        const critChance = attack.crit ? 0.4 : 0.15  // Higher crit chance for critical-focused attacks
+        if (Math.random() < critChance) {
+            damage *= 1.5  // 50% bonus damage on crit
+            isCrit = true
+        }
+
         // Round damage to integer
         damage = Math.floor(damage)
 
@@ -41,25 +55,25 @@ class CombatService {
             baseDamage: attack.damage,
             attackerBonus: attacker.attack / 10,
             defenseReduction: target.defense / 20,
-            finalDamage: damage
+            finalDamage: damage,
+            isCrit
         })
 
         // Apply damage to target
         target.currentHealth = Math.max(0, target.currentHealth - damage)
 
         // Log the attack
-        AppState.battleLog.push(`${attacker.name} used ${attack.name} and dealt ${damage} damage to ${target.name}!`)
+        let logMessage = `${attacker.name} used ${attack.name} and dealt ${damage} damage to ${target.name}!`
+        if (isCrit) {
+            logMessage += ' CRITICAL HIT!'
+        }
+        AppState.battleLog.push(logMessage)
 
         // Apply any status effects from the attack
         this.applyStatusEffect(attacker, target, attack)
 
-        // Apply any self-healing from the attack
-        if (attack.selfHeal > 0) {
-            const healAmount = Math.floor(attack.selfHeal + (attacker.attack / 20))
-            attacker.currentHealth = Math.min(attacker.maxHealth, attacker.currentHealth + healAmount)
-            AppState.battleLog.push(`${attacker.name} healed for ${healAmount} health!`)
-            console.log(`${attacker.name} healed for ${healAmount}`)
-        }
+        // Apply any healing or special effects to the attacker
+        this.applyAttackEffects(attacker, attack)
 
         // Set attack on cooldown
         attack.currentCooldown = attack.cooldown
@@ -68,20 +82,53 @@ class CombatService {
         if (target.currentHealth <= 0) {
             console.log(`${target.name} has been defeated!`)
             AppState.battleLog.push(`${target.name} has been defeated!`)
+            AppState.battleActive = false
+        }
 
-            // Handle end of battle based on who was defeated
-            if (target === AppState.player) {
-                // Player lost
-                console.log('Player lost the battle')
-                AppState.battleActive = false
-            } else if (target === AppState.boss) {
-                // Boss lost
-                console.log('Player won the battle')
-                AppState.battleActive = false
+        return { hit: true, damage, isCrit }
+    }
+
+    /**
+     * Handles multi-hit attacks
+     * @param {Player|Boss} attacker - The entity performing the attack
+     * @param {Player|Boss} target - The entity receiving the attack
+     * @param {Attack} attack - The attack being performed
+     * @returns {Object} - Result of the attack
+     */
+    handleMultiHitAttack(attacker, target, attack) {
+        let hits = 0
+        let totalDamage = 0
+        const hitChance = 0.8 // 80% hit chance per hit
+        const baseDamage = Math.floor((attack.damage + (attacker.attack / 10)) * 0.8) // Each hit does 80% damage
+
+        for (let i = 0; i < attack.multi; i++) {
+            if (Math.random() < hitChance) {
+                hits++
+                // Apply defense reduction per hit
+                const hitDamage = Math.max(1, baseDamage - (target.defense / 30))
+                totalDamage += Math.floor(hitDamage)
             }
         }
 
-        return { hit: true, damage }
+        if (hits > 0) {
+            // Apply total damage
+            target.currentHealth = Math.max(0, target.currentHealth - totalDamage)
+            AppState.battleLog.push(`${attacker.name} used ${attack.name} and hit ${hits}/${attack.multi} times for ${totalDamage} total damage!`)
+        } else {
+            AppState.battleLog.push(`${attacker.name} used ${attack.name} but missed all ${attack.multi} hits!`)
+        }
+
+        // Set attack on cooldown
+        attack.currentCooldown = attack.cooldown
+
+        // Check for target defeat
+        if (target.currentHealth <= 0) {
+            console.log(`${target.name} has been defeated!`)
+            AppState.battleLog.push(`${target.name} has been defeated!`)
+            AppState.battleActive = false
+        }
+
+        return { hit: hits > 0, damage: totalDamage, hits }
     }
 
     /**
@@ -91,40 +138,101 @@ class CombatService {
      * @param {Attack} attack - The attack being performed
      */
     applyStatusEffect(attacker, target, attack) {
-        if (!attack.statusEffect) return
-
-        // Check if status effect applies based on chance
-        const effectRoll = Math.random() * 100
-        if (effectRoll > attack.statusEffectChance) return
-
-        // Apply the status effect
-        const effectDuration = 3 // Default duration in turns
-        const newEffect = {
-            name: attack.statusEffect,
-            duration: effectDuration,
-            source: attacker.name
+        // Handle burn effect
+        if (attack.burn && Math.random() < 0.4) {
+            if (target === AppState.boss) {
+                target.burning = true
+                AppState.battleLog.push(`${target.name} is burning!`)
+            } else {
+                AppState.playerBurning = true
+                AppState.battleLog.push(`${target.name} is burning!`)
+            }
         }
 
-        // Add effect details based on type
-        switch (attack.statusEffect) {
-            case 'burn':
-                newEffect.damagePerTurn = Math.floor(attacker.attack * 0.2)
-                break
-            case 'poison':
-                newEffect.damagePerTurn = Math.floor(target.maxHealth * 0.05)
-                break
-            case 'stun':
-                newEffect.skipTurn = true
-                break
-            case 'weaken':
-                newEffect.statMod = { defense: -2 }
-                break
+        // Handle stun effect
+        if (attack.stun && Math.random() < 0.4) {
+            if (target === AppState.boss) {
+                AppState.bossStunned = true
+                AppState.battleLog.push(`${target.name} is stunned!`)
+            } else {
+                // If we need to add player stun in the future
+                AppState.battleLog.push(`${target.name} is stunned!`)
+            }
         }
 
-        // Add to target's status effects
-        target.statusEffects.push(newEffect)
+        // Handle slow effect
+        if (attack.slow && Math.random() < 0.4) {
+            if (target === AppState.player) {
+                AppState.playerSlowed = true
+                AppState.battleLog.push(`${target.name} is slowed!`)
+            }
+        }
 
-        AppState.battleLog.push(`${target.name} is afflicted with ${attack.statusEffect}!`)
+        // Handle explicit status effects if provided
+        if (attack.statusEffect) {
+            const effectChance = attack.statusEffectChance || 40
+            if (Math.random() * 100 < effectChance) {
+                // Create status effect object
+                const newEffect = {
+                    name: attack.statusEffect,
+                    duration: 3, // Default 3 turns
+                    source: attacker.name
+                }
+
+                // Add effect-specific properties
+                switch (attack.statusEffect) {
+                    case 'burn':
+                        newEffect.damagePerTurn = Math.floor(attacker.attack * 0.2)
+                        break
+                    case 'stun':
+                        newEffect.skipTurn = true
+                        break
+                    case 'slow':
+                        newEffect.speedReduction = 5
+                        break
+                }
+
+                // Add to target's status effects
+                if (!target.statusEffects) {
+                    target.statusEffects = []
+                }
+                target.statusEffects.push(newEffect)
+                AppState.battleLog.push(`${target.name} is afflicted with ${attack.statusEffect}!`)
+            }
+        }
+    }
+
+    /**
+     * Applies healing or barrier effects from an attack to the attacker
+     * @param {Player|Boss} attacker - The entity that used the attack
+     * @param {Attack} attack - The attack being performed
+     */
+    applyAttackEffects(attacker, attack) {
+        // Apply healing
+        if (attack.heal) {
+            const healAmount = attack.heal
+            attacker.currentHealth = Math.min(attacker.maxHealth, attacker.currentHealth + healAmount)
+            AppState.battleLog.push(`${attacker.name} healed for ${healAmount} health!`)
+        }
+
+        // Apply self healing (for enemies)
+        if (attack.selfHeal) {
+            const healAmount = Math.floor(attack.selfHeal + (attacker.attack / 20))
+            attacker.currentHealth = Math.min(attacker.maxHealth, attacker.currentHealth + healAmount)
+            AppState.battleLog.push(`${attacker.name} healed for ${healAmount} health!`)
+        }
+
+        // Apply barrier
+        if (attack.barrier) {
+            AppState.playerBarrier = attack.barrier
+            AppState.battleLog.push(`${attacker.name} gained a barrier of ${attack.barrier}!`)
+        }
+
+        // Apply dodge
+        if (attack.dodge) {
+            AppState.playerDodging = true
+            AppState.battleLog.push(`${attacker.name} is dodging attacks!`)
+        }
     }
 
     /**
@@ -132,22 +240,43 @@ class CombatService {
      * @param {Player|Boss} entity - The entity whose turn is starting
      */
     processStatusEffects(entity) {
-        if (!entity.statusEffects.length) return
+        // Special case for burning boss (legacy system)
+        if (entity === AppState.boss && entity.burning) {
+            const burnDamage = Math.floor(AppState.player.attack / 4)
+            entity.currentHealth = Math.max(0, entity.currentHealth - burnDamage)
+            AppState.battleLog.push(`${entity.name} takes ${burnDamage} burn damage!`)
 
-        // Process each status effect
-        entity.statusEffects.forEach(effect => {
-            // Apply damage over time effects
-            if (effect.damagePerTurn) {
-                entity.currentHealth = Math.max(0, entity.currentHealth - effect.damagePerTurn)
-                AppState.battleLog.push(`${entity.name} took ${effect.damagePerTurn} damage from ${effect.name}!`)
+            // Check for defeat from burn damage
+            if (entity.currentHealth <= 0) {
+                AppState.battleLog.push(`${entity.name} has been defeated by burn damage!`)
+                AppState.battleActive = false
+                return
             }
 
-            // Reduce duration
-            effect.duration--
-        })
+            // 30% chance to remove burning
+            if (Math.random() < 0.3) {
+                entity.burning = false
+                AppState.battleLog.push(`${entity.name} is no longer burning.`)
+            }
+        }
 
-        // Remove expired effects
-        entity.statusEffects = entity.statusEffects.filter(effect => effect.duration > 0)
+        // Process standard status effects array if present
+        if (entity.statusEffects && entity.statusEffects.length > 0) {
+            // Process each status effect
+            entity.statusEffects.forEach(effect => {
+                // Apply damage over time effects
+                if (effect.damagePerTurn) {
+                    entity.currentHealth = Math.max(0, entity.currentHealth - effect.damagePerTurn)
+                    AppState.battleLog.push(`${entity.name} took ${effect.damagePerTurn} damage from ${effect.name}!`)
+                }
+
+                // Reduce duration
+                effect.duration--
+            })
+
+            // Remove expired effects
+            entity.statusEffects = entity.statusEffects.filter(effect => effect.duration > 0)
+        }
     }
 
     /**
@@ -156,7 +285,36 @@ class CombatService {
      * @returns {boolean} - Whether the entity should skip their turn
      */
     shouldSkipTurn(entity) {
-        return entity.statusEffects.some(effect => effect.skipTurn)
+        // Check for legacy stun on boss
+        if (entity === AppState.boss && AppState.bossStunned) {
+            return true
+        }
+
+        // Check status effects array
+        return entity.statusEffects && entity.statusEffects.some(effect => effect.skipTurn)
+    }
+
+    /**
+     * Utility function to calculate health percentage
+     * @param {number} current - Current health
+     * @param {number} max - Max health
+     * @returns {number} - Health percentage (0-100)
+     */
+    healthPercent(current, max) {
+        return (current / max) * 100
+    }
+
+    /**
+     * Utility function to get health bar color based on percentage
+     * @param {number} current - Current health
+     * @param {number} max - Max health
+     * @returns {string} - CSS color for health bar
+     */
+    healthColor(current, max) {
+        const percent = (current / max) * 100
+        if (percent > 70) return '#4CAF50' // Green
+        if (percent > 40) return '#FFC107' // Yellow
+        return '#F44336' // Red
     }
 }
 

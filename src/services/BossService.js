@@ -24,24 +24,37 @@ class BossService {
 
         // Simple AI to select attack based on situation
 
-        // If health is low and has healing attack, prioritize it
+        // If boss health is low and has a healing attack, prioritize it
         if (boss.currentHealth < boss.maxHealth * 0.3) {
             const healingAttack = availableAttacks.find(a => a.selfHeal > 0)
             if (healingAttack) return healingAttack
         }
 
-        // If player has no status effects, prioritize attacks that apply them
-        if (AppState.player.statusEffects.length === 0) {
-            const statusAttack = availableAttacks.find(a => a.statusEffect)
-            if (statusAttack) return statusAttack
+        // Every 3rd turn, boss does something special if possible
+        if (AppState.turnCount % 3 === 0) {
+            const specialAttack = availableAttacks.find(a => a.cooldown >= 3)
+            if (specialAttack) return specialAttack
+
+            // If no special attack is available, try to heal a bit (legacy code support)
+            if (Math.random() < 0.5) {
+                const healAmount = Math.floor(boss.maxHealth * 0.05)  // Only heal 5% of max health
+                boss.currentHealth = Math.min(boss.maxHealth, boss.currentHealth + healAmount)
+                AppState.battleLog.push(`${boss.name} recovers ${healAmount} health!`)
+            }
         }
 
-        // High damage attacks for when boss is in later phases
-        if (boss.currentPhase > 0) {
-            const highDamageAttacks = availableAttacks.filter(a => a.damage > 20)
-            if (highDamageAttacks.length > 0) {
-                return this.getRandomAttack(highDamageAttacks)
+        // If player has high health, prioritize high damage attacks
+        if (AppState.player.currentHealth > AppState.player.maxHealth * 0.6) {
+            const damageAttacks = availableAttacks.filter(a => a.damage > 20)
+            if (damageAttacks.length > 0) {
+                return this.getRandomAttack(damageAttacks)
             }
+        }
+
+        // If player has status effects, prioritize attacks that apply them
+        if (!AppState.playerBurning && !AppState.playerSlowed) {
+            const statusAttack = availableAttacks.find(a => a.statusEffect || a.burn || a.slow)
+            if (statusAttack) return statusAttack
         }
 
         // Otherwise, select a random attack
@@ -63,6 +76,15 @@ class BossService {
      */
     checkPhaseTransition() {
         const boss = AppState.boss
+
+        // Skip if no phases defined
+        if (!boss.phases || boss.phases.length === 0) return
+
+        // Initialize currentPhase if not set
+        if (boss.currentPhase === undefined) {
+            boss.currentPhase = 0
+        }
+
         const healthPercentage = boss.currentHealth / boss.maxHealth
 
         // Check if we should move to the next phase
@@ -117,9 +139,6 @@ class BossService {
      * Processes effects at the end of boss's turn
      */
     processEndOfTurn() {
-        // Process status effects
-        combatService.processStatusEffects(AppState.boss)
-
         // Process cooldowns on attacks
         AppState.boss.attacks.forEach(attack => {
             if (attack.currentCooldown > 0) {

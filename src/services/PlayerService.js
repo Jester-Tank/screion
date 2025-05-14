@@ -1,16 +1,19 @@
 import { AppState } from "../AppState.js"
 import { gameService } from "./GameService.js"
 import { combatService } from "./CombatService.js"
+import { characterService } from "./CharacterService.js"
 
 class PlayerService {
     /**
-     * Handles when the player uses an attack
+     * Handles player using an attack in battle
      * @param {Attack} attack - The attack to use
      */
     usePlayerAttack(attack) {
         if (!AppState.battleActive || !AppState.playerTurn) return
 
-        // Check if player is stunned
+        AppState.turnCount++
+
+        // Check for status effects that would prevent attacking
         if (combatService.shouldSkipTurn(AppState.player)) {
             AppState.battleLog.push(`${AppState.player.name} is stunned and cannot attack!`)
             gameService.endPlayerTurn()
@@ -31,18 +34,26 @@ class PlayerService {
     }
 
     /**
-     * Handles when the player uses an item
+     * Processes effects at the end of player's turn
+     */
+    processEndOfTurn() {
+        // Process status effects
+        combatService.processStatusEffects(AppState.player)
+
+        // Process cooldowns on attacks
+        AppState.player.attacks.forEach(attack => {
+            if (attack.currentCooldown > 0) {
+                attack.currentCooldown--
+            }
+        })
+    }
+
+    /**
+     * Handles using an item from inventory
      * @param {Item} item - The item to use
      */
     usePlayerItem(item) {
         if (!AppState.battleActive || !AppState.playerTurn) return
-
-        // Check if player is stunned
-        if (combatService.shouldSkipTurn(AppState.player)) {
-            AppState.battleLog.push(`${AppState.player.name} is stunned and cannot use items!`)
-            gameService.endPlayerTurn()
-            return
-        }
 
         // Apply item effect
         this.applyItemEffect(item)
@@ -89,55 +100,10 @@ class PlayerService {
     }
 
     /**
-     * Processes effects at the end of player's turn
+     * Save game data to localStorage
      */
-    processEndOfTurn() {
-        // Process cooldowns on attacks
-        AppState.player.attacks.forEach(attack => {
-            if (attack.currentCooldown > 0) {
-                attack.currentCooldown--
-            }
-        })
-    }
-
-    /**
-     * Awards victory rewards to the player
-     * @param {Boss} boss - The defeated boss
-     */
-    awardVictory(boss) {
-        // Award experience
-        const expGain = boss.level * 50
-        AppState.player.exp += expGain
-        AppState.battleLog.push(`${AppState.player.name} gained ${expGain} experience!`)
-
-        // Check for level up
-        this.checkLevelUp()
-
-        // Could add item drops, currency, etc. here
-    }
-
-    /**
-     * Checks if player has enough exp to level up
-     */
-    checkLevelUp() {
-        const expNeeded = AppState.player.level * 100
-
-        if (AppState.player.exp >= expNeeded) {
-            // Level up
-            AppState.player.level++
-            AppState.player.exp -= expNeeded
-
-            // Improve stats
-            AppState.player.maxHealth += 10
-            AppState.player.currentHealth = AppState.player.maxHealth
-            AppState.player.attack += 2
-            AppState.player.defense += 1
-
-            AppState.battleLog.push(`${AppState.player.name} leveled up to level ${AppState.player.level}!`)
-
-            // Check for another level up (in case gained a lot of exp)
-            this.checkLevelUp()
-        }
+    saveGameData() {
+        characterService.saveGameData()
     }
 }
 

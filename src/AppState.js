@@ -12,7 +12,62 @@ export const AppState = reactive({
 
   // Game State
   /** @type {Player|null} */
-  player: null,
+  player: null, import { reactive } from 'vue'
+import { Character } from './models/Character.js'
+import { Boss } from './models/Boss.js'
+import { Attack } from './models/Attack.js'
+
+// NOTE AppState is a reactive object to contain app level data
+export const AppState = reactive({
+    /**@type {import('@bcwdev/auth0provider-client').Identity} */
+    identity: null,
+    /**@type {import('./models/Account.js').Account} user info from the database*/
+    account: null,
+
+    // Game state
+    gold: 0,
+    playerLevel: 1,
+    selectedHero: null,
+    selectedEnemy: null,
+    battleMode: false,
+
+    // Locked state for characters and bosses
+    unlockedCharacters: ['knight'],  // Start with only knight unlocked
+    unlockedEnemies: ['dragon'],     // Start with only dragon unlocked
+
+    // Character costs
+    characterCosts: {
+      mage: 100,
+      archer: 250,
+      paladin: 500
+    },
+
+    // Enemy costs
+    enemyCosts: {
+      necromancer: 150,
+      golem: 300,
+      dragon_king: 600
+    },
+
+    // Player and Boss instances (will be set during battle)
+    player: null,
+    boss: null,
+
+    // Character and Enemy templates
+    playerTemplates: [],
+    bossTemplates: [],
+
+    // Battle state
+    playerTurn: true,
+    battleLog: ['Prepare for battle!'],
+    battleActive: false,
+    turnCount: 0,
+    bossStunned: false,
+    playerBurning: false,
+    playerSlowed: false,
+    playerBarrier: 0,
+    playerDodging: false
+  })
 
   /** @type {Boss|null} */
   boss: null,
@@ -248,4 +303,56 @@ export const AppState = reactive({
       ]
     })
   ]
+})import { reactive } from 'vue'
+
+// NOTE AppState is a reactive object to contain app level data
+export const AppState = reactive({
+  /**@type {import('@bcwdev/auth0provider-client').Identity} */
+  identity: null,
+  /**@type {import('./models/Account.js').Account} user info from the database*/
+  account: null,
+
+  // Game state
+  gold: 0,
+  playerLevel: 1,
+  selectedHero: null,
+  selectedEnemy: null,
+  battleMode: false,
+
+  // Locked state for characters and bosses
+  unlockedCharacters: ['knight'],  // Start with only knight unlocked
+  unlockedEnemies: ['dragon'],     // Start with only dragon unlocked
+
+  // Character costs
+  characterCosts: {
+    mage: 100,
+    archer: 250,
+    paladin: 500
+  },
+
+  // Enemy costs
+  enemyCosts: {
+    necromancer: 150,
+    golem: 300,
+    dragon_king: 600
+  },
+
+  // Player and Boss instances (will be set during battle)
+  player: null,
+  boss: null,
+
+  // Character and Enemy templates
+  playerTemplates: [],
+  bossTemplates: [],
+
+  // Battle state
+  playerTurn: true,
+  battleLog: ['Prepare for battle!'],
+  battleActive: false,
+  turnCount: 0,
+  bossStunned: false,
+  playerBurning: false,
+  playerSlowed: false,
+  playerBarrier: 0,
+  playerDodging: false
 })
