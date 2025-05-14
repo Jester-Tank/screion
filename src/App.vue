@@ -14,8 +14,8 @@
 
 <script>
 import { computed } from 'vue'
-import { AppState } from 'AppState'
-import Navbar from 'components/Navbar.vue'
+import { AppState } from './AppState.js'
+import Navbar from './components/Navbar.vue'
 
 export default {
   name: 'App',
