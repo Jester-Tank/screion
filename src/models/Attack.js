@@ -1,9 +1,10 @@
+// src/models/Attack.js
 export class Attack {
     constructor(data) {
         this.id = data.id
         this.name = data.name
         this.damage = data.damage || 0
-        this.type = data.type
+        this.type = data.type || 'physical'
         this.cooldown = data.cooldown || 0
         this.currentCooldown = data.currentCooldown || 0
         this.heal = data.heal || 0

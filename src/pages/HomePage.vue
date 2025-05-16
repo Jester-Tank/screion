@@ -347,7 +347,7 @@ export default {
     characterService.loadGameData()
     
     return {
-      // AppState data
+      // AppState data (computed properties)
       gold: computed(() => AppState.gold),
       playerLevel: computed(() => AppState.playerLevel),
       selectedHero: computed(() => AppState.selectedHero),
@@ -366,7 +366,7 @@ export default {
       playerBurning: computed(() => AppState.playerBurning),
       playerSlowed: computed(() => AppState.playerSlowed),
       
-      // Computed properties
+      // Computed properties for filtering and calculations
       filteredCharacters: computed(() => characterService.getFilteredCharacters()),
       lockedCharacters: computed(() => characterService.getLockedCharacters()),
       filteredEnemies: computed(() => enemyService.getFilteredEnemies()),
@@ -375,7 +375,7 @@ export default {
       attacksOnCooldown: computed(() => AppState.player ? AppState.player.attacks.filter(a => a.currentCooldown > 0) : []),
       isReadyToFight: computed(() => gameService.isReadyToFight()),
       
-      // Coordinator functions
+      // Coordinator functions that call service methods
       selectHero(id) {
         characterService.selectHero(id)
       },

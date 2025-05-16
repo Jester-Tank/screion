@@ -1,12 +1,13 @@
+// src/services/CombatService.js
 import { AppState } from "../AppState.js"
+// Import models only if actually needed for type checking (not just for JSDoc)
+// import { Player } from "../models/Player.js"
+// import { Boss } from "../models/Boss.js"
+// import { Attack } from "../models/Attack.js"
 
 class CombatService {
     /**
      * Performs an attack from the attacker to the target
-     * @param {Player|Boss} attacker - The entity performing the attack
-     * @param {Player|Boss} target - The entity receiving the attack
-     * @param {Attack} attack - The attack being performed
-     * @returns {Object} - Result of the attack (damage dealt, effects, etc)
      */
     performAttack(attacker, target, attack) {
         console.log('Performing attack:', {
@@ -90,10 +91,6 @@ class CombatService {
 
     /**
      * Handles multi-hit attacks
-     * @param {Player|Boss} attacker - The entity performing the attack
-     * @param {Player|Boss} target - The entity receiving the attack
-     * @param {Attack} attack - The attack being performed
-     * @returns {Object} - Result of the attack
      */
     handleMultiHitAttack(attacker, target, attack) {
         let hits = 0
@@ -133,9 +130,6 @@ class CombatService {
 
     /**
      * Applies status effects from an attack
-     * @param {Player|Boss} attacker - The entity performing the attack
-     * @param {Player|Boss} target - The entity receiving the attack
-     * @param {Attack} attack - The attack being performed
      */
     applyStatusEffect(attacker, target, attack) {
         // Handle burn effect
@@ -204,8 +198,6 @@ class CombatService {
 
     /**
      * Applies healing or barrier effects from an attack to the attacker
-     * @param {Player|Boss} attacker - The entity that used the attack
-     * @param {Attack} attack - The attack being performed
      */
     applyAttackEffects(attacker, attack) {
         // Apply healing
@@ -237,7 +229,6 @@ class CombatService {
 
     /**
      * Process status effects at the start of an entity's turn
-     * @param {Player|Boss} entity - The entity whose turn is starting
      */
     processStatusEffects(entity) {
         // Special case for burning boss (legacy system)
@@ -281,8 +272,6 @@ class CombatService {
 
     /**
      * Checks if an entity should skip their turn due to status effects
-     * @param {Player|Boss} entity - The entity to check
-     * @returns {boolean} - Whether the entity should skip their turn
      */
     shouldSkipTurn(entity) {
         // Check for legacy stun on boss
@@ -296,9 +285,6 @@ class CombatService {
 
     /**
      * Utility function to calculate health percentage
-     * @param {number} current - Current health
-     * @param {number} max - Max health
-     * @returns {number} - Health percentage (0-100)
      */
     healthPercent(current, max) {
         return (current / max) * 100
@@ -306,9 +292,6 @@ class CombatService {
 
     /**
      * Utility function to get health bar color based on percentage
-     * @param {number} current - Current health
-     * @param {number} max - Max health
-     * @returns {string} - CSS color for health bar
      */
     healthColor(current, max) {
         const percent = (current / max) * 100
