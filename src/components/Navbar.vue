@@ -1,82 +1,90 @@
 <template>
-  <nav class="navbar navbar-expand-lg navbar-dark">
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container-fluid">
-      <router-link to="/" class="navbar-brand d-flex align-items-center">
-        <span class="game-logo">BOSS BATTLE</span>
+      <router-link class="navbar-brand" to="/">
+        <i class="mdi mdi-sword-cross"></i> Heroes of the Realm
       </router-link>
       
-      <button 
-        class="navbar-toggler" 
-        type="button" 
-        data-bs-toggle="collapse" 
-        data-bs-target="#navbarNav" 
-        aria-controls="navbarNav" 
-        aria-expanded="false" 
-        aria-label="Toggle navigation"
-      >
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" 
+              data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" 
+              aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
       </button>
       
-      <div class="collapse navbar-collapse" id="navbarNav">
-        <ul class="navbar-nav ms-auto">
+      <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
           <li class="nav-item">
-            <router-link to="/" class="nav-link">Home</router-link>
+            <router-link class="nav-link" :to="{ name: 'Home' }">Home</router-link>
           </li>
-          <!-- Battle link removed - now integrated in Homepage -->
+          
           <li class="nav-item">
-            <router-link to="/about" class="nav-link">About</router-link>
+            <router-link class="nav-link" :to="{ name: 'Characters' }">Characters</router-link>
           </li>
-          <li class="nav-item">
-            <router-link to="/account" class="nav-link">Account</router-link>
+          
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="gameDropdown" role="button" 
+               data-bs-toggle="dropdown" aria-expanded="false">
+              Game
+            </a>
+            <ul class="dropdown-menu" aria-labelledby="gameDropdown">
+              <li>
+                <router-link class="dropdown-item" :to="{ name: 'Characters' }">
+                  <i class="mdi mdi-account-group"></i> Characters
+                </router-link>
+              </li>
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <a class="dropdown-item" href="#" @click.prevent="startNewGame">
+                  <i class="mdi mdi-play"></i> New Game
+                </a>
+              </li>
+            </ul>
           </li>
         </ul>
+        
+        <div class="d-flex">
+          <div v-if="activeCharacter" class="d-flex align-items-center text-light me-3">
+            <img :src="activeCharacter.imageUrl" alt="Active Character" class="avatar-small me-2">
+            <span>{{ activeCharacter.name }}</span>
+          </div>
+          
+          <router-link class="btn btn-outline-light" :to="{ name: 'Account' }">
+            <i class="mdi mdi-account"></i> Account
+          </router-link>
+        </div>
       </div>
     </div>
   </nav>
 </template>
 
 <script>
+import { computed } from 'vue'
+import { AppState } from '../AppState.js'
+
 export default {
-  name: 'Navbar'
+  setup() {
+    const activeCharacter = computed(() => AppState.activeCharacter)
+    
+    function startNewGame() {
+      // This would handle starting a new game
+      // For now, just alerts the user
+      alert('This would start a new game. Not yet implemented.')
+    }
+    
+    return {
+      activeCharacter,
+      startNewGame
+    }
+  }
 }
 </script>
 
 <style scoped lang="scss">
-.navbar {
-  background-color: #1a1a1a;
-  padding: 0.5rem 1rem;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-}
-
-.game-logo {
-  font-weight: bold;
-  font-size: 1.5rem;
-  letter-spacing: 0.1rem;
-  color: #ff7700;
-  text-shadow: 0 0 5px rgba(255, 119, 0, 0.5);
-}
-
-.nav-link {
-  color: #fff;
-  margin: 0 0.5rem;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  
-  &:hover, &.router-link-active {
-    color: #ff7700;
-  }
-  
-  &.router-link-exact-active {
-    font-weight: bold;
-    text-decoration: underline;
-  }
-}
-
-.navbar-toggler {
-  border-color: rgba(255, 119, 0, 0.5);
-  
-  &:focus {
-    box-shadow: 0 0 0 0.25rem rgba(255, 119, 0, 0.25);
-  }
+.avatar-small {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #fff;
 }
 </style>

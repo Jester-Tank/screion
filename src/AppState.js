@@ -1,124 +1,179 @@
-// src/AppState.js
 import { reactive } from 'vue'
+import { Paladin } from './models/Paladin.js'
+import { Archer } from './models/Archer.js'
 
 // NOTE AppState is a reactive object to contain app level data
 export const AppState = reactive({
-  // User data - Auth system data
-  identity: null, // Identity from auth0
-  account: null, // Account - user info from the database
+  /** @type {import('@bcwdev/auth0provider-client').User} */
+  user: {},
+  /** @type {import('@bcwdev/auth0provider-client').Identity} */
+  identity: {},
+  /** @type {import('./models/Account.js').Account} */
+  account: {},
 
-  //#region GAME STATE
-  // Core Game Stats
-  gold: 0,
-  playerLevel: 1,
-  selectedHero: null,
-  selectedEnemy: null,
-  battleMode: false,
-  difficulty: 'normal', // 'easy', 'normal', 'hard'
+  /** @type {Paladin[]} */
+  paladins: [
+    new Paladin({
+      name: 'Sir Stellaris',
+      title: 'Star Guardian',
+      maxHealth: 120,
+      attack: 28,
+      defense: 22,
+      holyPower: 40,
+      level: 3,
+      experience: 50,
+      imageUrl: '/src/assets/img/knight-star-shield.jpg',
+      description: 'A young paladin chosen by celestial forces. Wields a golden blade of light and star-emblazoned shield that radiates divine protection.',
+      skills: ['Smite Evil', 'Divine Strike', 'Star Blessing'],
+      inventory: ['Golden Sword of Light', 'Star Shield', 'Holy Water', 'Divine Charm']
+    })
+  ],
 
-  // Items & Currency
-  totalGoldEarned: 0,
-  playerItems: [], // Array of items the player owns
-  shopItems: [], // Array of items available in the shop
+  /** @type {Archer[]} */
+  archers: [
+    new Archer({
+      name: 'Sylvia',
+      title: 'Forest Shadow',
+      maxHealth: 85,
+      attack: 32,
+      defense: 12,
+      range: 5,
+      level: 2,
+      experience: 75,
+      imageUrl: '/src/assets/img/archer-forest.jpg',
+      description: 'A cheerful but deadly archer who moves like the wind through the forest. Never misses her mark.',
+      skills: ['Quick Shot', 'Rapid Fire'],
+      inventory: ['Wooden Bow', 'Quiver of Arrows', 'Hunting Knife']
+    })
+  ],
 
-  // Unlocks & Progression
-  unlockedCharacters: ['knight'],  // Start with only knight unlocked
-  unlockedEnemies: ['dragon'],     // Start with only dragon unlocked
-  defeatedBosses: [], // Track bosses defeated at least once
-  highestLevel: 1,
-  achievements: [], // Array of achievement IDs the player has earned
+  /** @type {Paladin|Archer|null} */
+  activeCharacter: null,
 
-  // Costs for unlockables
+  /** @type {Object[]} */
+  gameItems: [
+    {
+      id: 'health-potion',
+      name: 'Health Potion',
+      type: 'consumable',
+      effect: 'heal',
+      value: 30,
+      description: 'Restores 30 health points when consumed.',
+      rarity: 'common'
+    },
+    {
+      id: 'holy-water',
+      name: 'Holy Water',
+      type: 'consumable',
+      effect: 'restore-holy-power',
+      value: 20,
+      description: 'Restores 20 holy power to a paladin.',
+      rarity: 'uncommon'
+    },
+    {
+      id: 'blessed-arrow',
+      name: 'Blessed Arrow',
+      type: 'consumable',
+      effect: 'increase-attack',
+      value: 10,
+      description: 'Increases an archer\'s attack by 10 for the next battle.',
+      rarity: 'uncommon'
+    }
+  ],
+
+  /** @type {Object} */
+  gameProgress: {
+    currentQuest: null,
+    completedQuests: [],
+    currentLocation: 'town',
+    visitedLocations: ['town'],
+    gameDay: 1,
+    gold: 100
+  },
+
+  // Character templates from CharacterService
+  /** @type {import('./models/Player.js').Player[]} */
+  playerTemplates: [],
+
+  // Character unlocking data
+  /** @type {string[]} */
+  unlockedCharacters: ['paladin'],
+
+  /** @type {Object} */
   characterCosts: {
-    mage: 100,
-    archer: 250,
-    paladin: 500
+    knight: 0,
+    paladin: 0,
+    mage: 200,
+    archer: 150
   },
+
+  // Enemy templates from EnemyService
+  /** @type {import('./models/Boss.js').Boss[]} */
+  bossTemplates: [],
+
+  /** @type {string[]} */
+  unlockedEnemies: ['dragon'],
+
+  /** @type {Object} */
   enemyCosts: {
-    necromancer: 150,
+    dragon: 0,
+    necromancer: 200,
     golem: 300,
-    dragon_king: 600
+    dragon_king: 500
   },
-  //#endregion
 
-  //#region BATTLE ENTITIES
-  // Current battle entities
-  player: null, // Current player instance in battle
-  boss: null, // Current boss instance in battle
+  /** @type {string[]} */
+  defeatedBosses: [],
 
-  // Templates (populated by services)
-  playerTemplates: [], // Array of all possible character templates
-  bossTemplates: [], // Array of all possible boss templates
-  //#endregion
+  // Battle state
+  /** @type {Object} */
+  battleState: {
+    /** @type {import('./models/Player.js').Player|null} */
+    player: null,
+    /** @type {import('./models/Boss.js').Boss|null} */
+    boss: null,
+    battleActive: false,
+    turnCount: 0,
+    playerTurn: true,
+    battleLog: [],
+    playerBarrier: 0,
+    playerDodging: false,
+    playerBurning: false,
+    playerSlowed: false,
+    bossStunned: false
+  },
 
-  //#region BATTLE STATE
-  // Battle flow
-  battleActive: false,
-  playerTurn: true,
-  turnCount: 0,
-  battleLog: ['Prepare for battle!'],
-  battleResult: null, // null, 'victory', 'defeat'
+  // Aliases for backward compatibility
+  get player() { return this.battleState.player },
+  set player(value) { this.battleState.player = value },
 
-  // Status Effects
-  bossStunned: false,
-  playerBurning: false,
-  playerSlowed: false,
-  playerBarrier: 0,
-  playerDodging: false,
+  get boss() { return this.battleState.boss },
+  set boss(value) { this.battleState.boss = value },
 
-  // Special battle state
-  criticalMode: false, // Set to true when player or boss is below 20% health
-  comboCounter: 0, // Tracks consecutive hits for combo system
-  perfectBlock: false, // For timing-based block mechanic
-  //#endregion
+  get battleActive() { return this.battleState.battleActive },
+  set battleActive(value) { this.battleState.battleActive = value },
 
-  //#region GAME SETTINGS
-  // User preferences
-  soundEnabled: true,
-  musicEnabled: true,
-  showTutorials: true,
-  difficultyLevel: 'normal', // 'easy', 'normal', 'hard'
-  animationSpeed: 'normal', // 'slow', 'normal', 'fast'
-  textSpeed: 'normal', // 'slow', 'normal', 'fast'
-  //#endregion
+  get turnCount() { return this.battleState.turnCount },
+  set turnCount(value) { this.battleState.turnCount = value },
 
-  //#region GAME STATISTICS
-  // Player stats
-  totalBattles: 0,
-  victories: 0,
-  defeats: 0,
-  totalDamageDealt: 0,
-  totalDamageTaken: 0,
-  longestBattle: 0, // Most turns in a battle
-  quickestVictory: 999, // Least turns to win a battle
-  favoriteBoss: null, // Most frequently battled boss
-  favoriteCharacter: null, // Most frequently used character
-  //#endregion
+  get playerTurn() { return this.battleState.playerTurn },
+  set playerTurn(value) { this.battleState.playerTurn = value },
 
-  //#region UI STATE
-  // UI state variables
-  currentScreen: 'home', // 'home', 'battle', 'shop', 'inventory', 'settings'
-  shopCategory: 'all', // 'all', 'potions', 'equipment', 'special'
-  inventoryFilter: 'all', // 'all', 'potions', 'equipment', 'special'
-  notificationQueue: [], // Array of notifications to display
-  helpTopicOpen: null, // Currently open help topic
-  //#endregion
+  get battleLog() { return this.battleState.battleLog },
+  set battleLog(value) { this.battleState.battleLog = value },
 
-  //#region QUEST SYSTEM
-  // Quest tracking
-  activeQuests: [], // Array of currently active quests
-  completedQuests: [], // Array of completed quest IDs
-  dailyQuestRefresh: null, // Timestamp of last daily quest refresh
-  weeklyQuestRefresh: null, // Timestamp of last weekly quest refresh
-  questProgress: {}, // Object tracking progress of different quest objectives
-  //#endregion
+  get playerBarrier() { return this.battleState.playerBarrier },
+  set playerBarrier(value) { this.battleState.playerBarrier = value },
 
-  //#region FUTURE EXPANSION
-  // Variables for future features
-  playerTeam: [], // For multi-character battles
-  guildLevel: 1, // For guild/clan system
-  worldMapProgress: {}, // For adventure/story mode
-  arenaRank: 'bronze', // For PvP arena system
-  seasonalEventActive: false, // For seasonal events
-  //#endregion
+  get playerDodging() { return this.battleState.playerDodging },
+  set playerDodging(value) { this.battleState.playerDodging = value },
+
+  get playerBurning() { return this.battleState.playerBurning },
+  set playerBurning(value) { this.battleState.playerBurning = value },
+
+  get playerSlowed() { return this.battleState.playerSlowed },
+  set playerSlowed(value) { this.battleState.playerSlowed = value },
+
+  get bossStunned() { return this.battleState.bossStunned },
+  set bossStunned(value) { this.battleState.bossStunned = value }
 })

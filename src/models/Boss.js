@@ -10,5 +10,6 @@ export class Boss extends Character {
         this.burning = data.burning || false
         this.currentPhase = data.currentPhase || 0
         this.phases = data.phases || []
+        this.characterClass = 'boss'
     }
 }
