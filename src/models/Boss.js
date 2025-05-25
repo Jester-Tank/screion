@@ -1,4 +1,3 @@
-// src/models/Boss.js
 import { Character } from "./Character.js"
 
 export class Boss extends Character {

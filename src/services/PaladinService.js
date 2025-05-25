@@ -35,7 +35,8 @@ class PaladinService {
         const paladin = this.getPaladinById(paladinId)
         if (paladin && paladin.experience >= paladin.level * 100) {
             paladin.level++
-            paladin.health += 12
+            paladin.maxHealth += 12
+            paladin.currentHealth = paladin.maxHealth // Restore health on level up
             paladin.attack += 4
             paladin.defense += 4
             paladin.holyPower += 5
@@ -79,7 +80,7 @@ class PaladinService {
         if (targetCharacter) {
             paladin.holyPower -= 10
             const healAmount = 5 + Math.floor(paladin.level * 2)
-            targetCharacter.health += healAmount
+            targetCharacter.currentHealth = Math.min(targetCharacter.maxHealth, targetCharacter.currentHealth + healAmount)
             return healAmount
         }
 

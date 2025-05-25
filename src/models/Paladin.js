@@ -1,13 +1,12 @@
-// src/models/Paladin.js
 import { Player } from "./Player.js"
 
 export class Paladin extends Player {
     constructor(data) {
         super(data)
         this.holyPower = data.holyPower || 30
+        this.range = null
         this.characterClass = 'paladin'
 
-        // Default paladin attacks if none provided
         if (!data.attacks || data.attacks.length === 0) {
             this.attacks = [
                 { id: 'smite', name: 'Smite', damage: 20, type: 'magical', cooldown: 0 },

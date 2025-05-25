@@ -1,11 +1,10 @@
-// src/models/Player.js
 import { Character } from "./Character.js"
 
 export class Player extends Character {
     constructor(data) {
         super(data)
         this.exp = data.exp || 0
-        this.experience = data.experience || data.exp || 0 // Support both exp and experience
+        this.experience = data.experience || data.exp || 0
         this.level = data.level || 1
         this.items = data.items || []
         this.inventory = data.inventory || data.items || []

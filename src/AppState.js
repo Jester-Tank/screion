@@ -4,12 +4,12 @@ import { Archer } from './models/Archer.js'
 
 // NOTE AppState is a reactive object to contain app level data
 export const AppState = reactive({
-  /** @type {import('@bcwdev/auth0provider-client').User} */
-  user: {},
-  /** @type {import('@bcwdev/auth0provider-client').Identity} */
-  identity: {},
-  /** @type {import('./models/Account.js').Account} */
-  account: {},
+  // /** @type {import('@bcwdev/auth0provider-client').User} */
+  // user: {},
+  // /** @type {import('@bcwdev/auth0provider-client').Identity} */
+  // identity: {},
+  // /** @type {import('./models/Account.js').Account} */
+  // account: '{}',
 
   /** @type {Paladin[]} */
   paladins: [
@@ -87,17 +87,33 @@ export const AppState = reactive({
     completedQuests: [],
     currentLocation: 'town',
     visitedLocations: ['town'],
-    gameDay: 1,
-    gold: 100
+    gameDay: 1
   },
 
-  // Character templates from CharacterService
+  // ========================================
+  // CHARACTER SYSTEM STATE
+  // ========================================
+
+  // Character templates for battle system
   /** @type {import('./models/Player.js').Player[]} */
   playerTemplates: [],
 
-  // Character unlocking data
+  // Game progression data
+  /** @type {number} */
+  gold: 100,
+
+  /** @type {number} */
+  playerLevel: 1,
+
+  /** @type {number} */
+  highestLevel: 1,
+
+  /** @type {number} */
+  totalGoldEarned: 0,
+
+  // Character unlocking system
   /** @type {string[]} */
-  unlockedCharacters: ['paladin'],
+  unlockedCharacters: ['paladin', 'knight'],
 
   /** @type {Object} */
   characterCosts: {
@@ -107,7 +123,11 @@ export const AppState = reactive({
     archer: 150
   },
 
-  // Enemy templates from EnemyService
+  // Hero selection for battle system
+  /** @type {string|null} */
+  selectedHero: null,
+
+  // Enemy system data  
   /** @type {import('./models/Boss.js').Boss[]} */
   bossTemplates: [],
 
@@ -125,6 +145,9 @@ export const AppState = reactive({
   /** @type {string[]} */
   defeatedBosses: [],
 
+  /** @type {string|null} */
+  selectedEnemy: null,
+
   // Battle state
   /** @type {Object} */
   battleState: {
@@ -141,6 +164,175 @@ export const AppState = reactive({
     playerBurning: false,
     playerSlowed: false,
     bossStunned: false
+  },
+
+  // ========================================
+  // STATE MANAGEMENT METHODS
+  // ========================================
+
+  // Character Management
+  setPlayerTemplates(templates) {
+    this.playerTemplates = templates
+  },
+
+  selectHero(id) {
+    console.log('Selecting hero:', id)
+    this.selectedHero = id
+    return this.selectedHero
+  },
+
+  unlockCharacter(id) {
+    const cost = this.characterCosts[id]
+    if (!cost && cost !== 0) {
+      console.error(`Character ${id} not found in characterCosts`)
+      return false
+    }
+
+    if (this.gold >= cost) {
+      this.gold -= cost
+      if (!this.unlockedCharacters.includes(id)) {
+        this.unlockedCharacters.push(id)
+      }
+      this.saveGameData()
+      return true
+    }
+    return false
+  },
+
+  // Gold Management
+  addGold(amount) {
+    this.gold += amount
+    this.totalGoldEarned += amount
+    this.saveGameData()
+    return this.gold
+  },
+
+  spendGold(amount) {
+    if (this.gold >= amount) {
+      this.gold -= amount
+      this.saveGameData()
+      return true
+    }
+    return false
+  },
+
+  // Level Management
+  levelUp() {
+    this.playerLevel++
+    if (this.playerLevel > this.highestLevel) {
+      this.highestLevel = this.playerLevel
+    }
+    this.saveGameData()
+    return this.playerLevel
+  },
+
+  // Enemy Management
+  selectEnemy(id) {
+    console.log('Selecting enemy:', id)
+    this.selectedEnemy = id
+    return this.selectedEnemy
+  },
+
+  unlockEnemy(id) {
+    const cost = this.enemyCosts[id]
+    if (this.gold >= cost) {
+      this.gold -= cost
+      if (!this.unlockedEnemies.includes(id)) {
+        this.unlockedEnemies.push(id)
+      }
+      this.saveGameData()
+      return true
+    }
+    return false
+  },
+
+  recordDefeat(enemyId) {
+    if (!this.defeatedBosses.includes(enemyId)) {
+      this.defeatedBosses.push(enemyId)
+      this.saveGameData()
+    }
+  },
+
+  // Utility Methods
+  isCharacterUnlocked(id) {
+    return this.unlockedCharacters.includes(id)
+  },
+
+  getUnlockCost(id) {
+    return this.characterCosts[id] || 0
+  },
+
+  getGameStats() {
+    return {
+      gold: this.gold,
+      playerLevel: this.playerLevel,
+      highestLevel: this.highestLevel,
+      totalGoldEarned: this.totalGoldEarned,
+      unlockedCharactersCount: this.unlockedCharacters.length,
+      defeatedBossesCount: this.defeatedBosses.length,
+      totalCharactersCount: this.playerTemplates.length
+    }
+  },
+
+  // Save/Load Methods
+  saveGameData() {
+    const gameData = {
+      gold: this.gold,
+      playerLevel: this.playerLevel,
+      unlockedCharacters: this.unlockedCharacters,
+      unlockedEnemies: this.unlockedEnemies,
+      defeatedBosses: this.defeatedBosses,
+      highestLevel: this.highestLevel,
+      totalGoldEarned: this.totalGoldEarned,
+      selectedHero: this.selectedHero,
+      selectedEnemy: this.selectedEnemy
+    }
+
+    try {
+      localStorage.setItem('bossBattleData', JSON.stringify(gameData))
+      console.log('Game data saved successfully')
+    } catch (error) {
+      console.error('Failed to save game data:', error)
+    }
+  },
+
+  loadGameData() {
+    const savedData = localStorage.getItem('bossBattleData')
+    if (savedData) {
+      try {
+        const gameData = JSON.parse(savedData)
+        this.gold = gameData.gold || 100
+        this.playerLevel = gameData.playerLevel || 1
+        this.unlockedCharacters = gameData.unlockedCharacters || ['paladin', 'knight']
+        this.unlockedEnemies = gameData.unlockedEnemies || ['dragon']
+        this.defeatedBosses = gameData.defeatedBosses || []
+        this.highestLevel = gameData.highestLevel || 1
+        this.totalGoldEarned = gameData.totalGoldEarned || 0
+        this.selectedHero = gameData.selectedHero || null
+        this.selectedEnemy = gameData.selectedEnemy || null
+        console.log('Game data loaded successfully')
+      } catch (error) {
+        console.error('Error loading game data:', error)
+        console.warn('Using default game data due to corrupted save')
+      }
+    } else {
+      console.log('No saved game data found, using defaults')
+    }
+  },
+
+  resetProgress() {
+    this.gold = 100
+    this.playerLevel = 1
+    this.unlockedCharacters = ['paladin', 'knight']
+    this.unlockedEnemies = ['dragon']
+    this.defeatedBosses = []
+    this.highestLevel = 1
+    this.totalGoldEarned = 0
+    this.selectedHero = null
+    this.selectedEnemy = null
+    this.saveGameData()
+    console.log('Game progress has been reset')
+    return 'Progress has been reset.'
   },
 
   // Aliases for backward compatibility

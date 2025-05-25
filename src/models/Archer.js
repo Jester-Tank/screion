@@ -1,13 +1,12 @@
-// src/models/Archer.js
 import { Player } from "./Player.js"
 
 export class Archer extends Player {
     constructor(data) {
         super(data)
         this.range = data.range || 4
+        this.holyPower = null
         this.characterClass = 'archer'
 
-        // Default archer attacks if none provided
         if (!data.attacks || data.attacks.length === 0) {
             this.attacks = [
                 { id: 'quick-shot', name: 'Quick Shot', damage: 22, type: 'physical', cooldown: 0 },

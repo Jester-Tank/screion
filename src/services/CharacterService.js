@@ -1,160 +1,334 @@
-// src/services/CharacterService.js
 import { AppState } from "../AppState.js"
-import { Player } from "../models/Player.js"
-import { Attack } from "../models/Attack.js"
 
 class CharacterService {
-    constructor() {
-        // Initialize character templates when service is created
-        this.initializeCharacterTemplates()
+    // ========================================
+    // PURE BUSINESS LOGIC METHODS (READ-ONLY)
+    // ========================================
+
+    /**
+     * Get all characters from AppState (paladins + archers)
+     */
+    getAllCharacters() {
+        return [...AppState.paladins, ...AppState.archers]
     }
 
-    initializeCharacterTemplates() {
-        const characters = [
-            {
-                id: 'knight',
-                name: 'Knight',
-                maxHealth: 150,
-                attack: 15,
-                defense: 10,
-                speed: 10,
-                imgUrl: 'https://placehold.co/200x200?text=Knight',
-                attacks: [
-                    { id: 'slash', name: 'Slash', damage: 20, type: 'physical', cooldown: 0 },
-                    { id: 'shield-bash', name: 'Shield Bash', damage: 15, type: 'physical', stun: true, cooldown: 2 },
-                    { id: 'heavy-blow', name: 'Heavy Blow', damage: 30, type: 'physical', cooldown: 3 },
-                    { id: 'rally', name: 'Rally', damage: 0, type: 'support', heal: 25, cooldown: 4 }
-                ]
-            },
-            {
-                id: 'mage',
-                name: 'Mage',
-                maxHealth: 120,
-                attack: 20,
-                defense: 5,
-                speed: 12,
-                imgUrl: 'https://placehold.co/200x200?text=Mage',
-                attacks: [
-                    { id: 'fireball', name: 'Fireball', damage: 25, type: 'magical', burn: true, cooldown: 0 },
-                    { id: 'ice-shard', name: 'Ice Shard', damage: 20, type: 'magical', slow: true, cooldown: 2 },
-                    { id: 'arcane-blast', name: 'Arcane Blast', damage: 35, type: 'magical', cooldown: 3 },
-                    { id: 'heal', name: 'Heal', damage: 0, type: 'support', heal: 30, cooldown: 4 }
-                ]
-            },
-            {
-                id: 'archer',
-                name: 'Archer',
-                maxHealth: 130,
-                attack: 18,
-                defense: 6,
-                speed: 15,
-                imgUrl: 'https://placehold.co/200x200?text=Archer',
-                attacks: [
-                    { id: 'quick-shot', name: 'Quick Shot', damage: 22, type: 'physical', cooldown: 0 },
-                    { id: 'precise-aim', name: 'Precise Aim', damage: 28, type: 'physical', cooldown: 2, crit: true },
-                    { id: 'barrage', name: 'Barrage', damage: 18, type: 'physical', cooldown: 3, multi: 3 },
-                    { id: 'evade', name: 'Evade', damage: 0, type: 'support', cooldown: 4, dodge: true }
-                ]
-            },
-            {
-                id: 'paladin',
-                name: 'Paladin',
-                maxHealth: 180,
-                attack: 14,
-                defense: 12,
-                speed: 8,
-                imgUrl: 'https://placehold.co/200x200?text=Paladin',
-                attacks: [
-                    { id: 'smite', name: 'Smite', damage: 20, type: 'magical', cooldown: 0 },
-                    { id: 'divine-shield', name: 'Divine Shield', damage: 0, type: 'support', cooldown: 3, barrier: 40 },
-                    { id: 'judgment', name: 'Judgment', damage: 35, type: 'magical', cooldown: 4 },
-                    { id: 'lay-hands', name: 'Lay on Hands', damage: 0, type: 'support', cooldown: 5, heal: 50 }
-                ]
-            }
-        ]
+    /**
+     * Get active character
+     */
+    getActiveCharacter() {
+        return AppState.activeCharacter
+    }
 
-        // Convert plain objects to Player instances with Attack instances
-        AppState.playerTemplates = characters.map(char => {
-            const player = new Player(char)
-            player.attacks = char.attacks.map(attack => new Attack(attack))
-            return player
+    /**
+     * Get character by ID from the actual character instances
+     */
+    getCharacterById(characterId) {
+        const allCharacters = this.getAllCharacters()
+        return allCharacters.find(char => char.id === characterId)
+    }
+
+    /**
+     * Get characters by class type
+     */
+    getCharactersByClass(characterClass) {
+        if (characterClass === 'paladin') {
+            return AppState.paladins
+        } else if (characterClass === 'archer') {
+            return AppState.archers
+        }
+        return []
+    }
+
+    /**
+     * Get character statistics summary
+     */
+    getCharacterStats(characterId) {
+        const character = this.getCharacterById(characterId)
+        if (!character) return null
+
+        return {
+            id: character.id,
+            name: character.name,
+            title: character.title,
+            level: character.level,
+            maxHealth: character.maxHealth,
+            currentHealth: character.currentHealth,
+            attack: character.attack,
+            defense: character.defense,
+            experience: character.experience,
+            characterClass: character.characterClass,
+            skills: character.skills,
+            inventory: character.inventory,
+            isActive: character.isActive,
+            // Special stats based on class
+            ...(character.holyPower && { holyPower: character.holyPower }),
+            ...(character.range && { range: character.range })
+        }
+    }
+
+    /**
+     * Get recommended character based on current state
+     */
+    getRecommendedCharacter() {
+        const allCharacters = this.getAllCharacters()
+        if (allCharacters.length === 0) return null
+
+        // Return highest level character
+        return allCharacters.reduce((prev, current) =>
+            (current.level > prev.level) ? current : prev
+        )
+    }
+
+    /**
+     * Calculate character power level
+     */
+    getCharacterPowerLevel(characterId) {
+        const character = this.getCharacterById(characterId)
+        if (!character) return 0
+
+        let basePower = character.attack + character.defense + (character.maxHealth / 10)
+
+        // Add level multiplier
+        basePower *= (1 + character.level * 0.1)
+
+        // Add class-specific bonuses
+        if (character.characterClass === 'paladin' && character.holyPower) {
+            basePower += character.holyPower * 0.5
+        }
+        if (character.characterClass === 'archer' && character.range) {
+            basePower += character.range * 2
+        }
+
+        return Math.round(basePower)
+    }
+
+    /**
+     * Get character build suggestions based on actual character
+     */
+    getCharacterBuildSuggestions(characterId) {
+        const character = this.getCharacterById(characterId)
+        if (!character) return []
+
+        const suggestions = []
+
+        // Level-based suggestions
+        if (character.level < 5) {
+            suggestions.push('Focus on basic training to gain experience')
+        }
+
+        // Class-specific suggestions
+        if (character.characterClass === 'paladin') {
+            suggestions.push('Use holy powers for both offense and healing')
+            if (character.holyPower < 30) {
+                suggestions.push('Work on increasing holy power reserves')
+            }
+        }
+
+        if (character.characterClass === 'archer') {
+            suggestions.push('Maintain distance and use ranged advantages')
+            if (character.range < 5) {
+                suggestions.push('Improve shooting range through training')
+            }
+        }
+
+        // General suggestions based on stats
+        if (character.attack < character.defense) {
+            suggestions.push('Consider focusing on offensive capabilities')
+        }
+        if (character.currentHealth < character.maxHealth * 0.8) {
+            suggestions.push('Rest or heal before major battles')
+        }
+
+        return suggestions
+    }
+
+    /**
+     * Analyze character vs enemy matchup
+     */
+    analyzeBattleMatchup(characterId, enemyId) {
+        const character = this.getCharacterById(characterId)
+        const enemy = AppState.bossTemplates?.find(e => e.id === enemyId)
+
+        if (!character || !enemy) return null
+
+        const characterPower = this.getCharacterPowerLevel(characterId)
+        const enemyPower = enemy.attack + enemy.defense + (enemy.maxHealth / 10)
+
+        const advantage = characterPower - enemyPower
+        let verdict = 'balanced'
+
+        if (advantage > 20) verdict = 'character_favored'
+        else if (advantage < -20) verdict = 'enemy_favored'
+
+        return {
+            characterPower,
+            enemyPower,
+            advantage,
+            verdict,
+            winChance: Math.max(10, Math.min(90, 50 + advantage)),
+            suggestions: this.getBattleSuggestions(character, enemy)
+        }
+    }
+
+    /**
+     * Get battle suggestions for character vs enemy
+     */
+    getBattleSuggestions(character, enemy) {
+        const suggestions = []
+
+        // Health comparison
+        if (character.currentHealth < character.maxHealth * 0.5) {
+            suggestions.push('Heal before engaging in battle')
+        }
+
+        // Class-specific tactics
+        if (character.characterClass === 'paladin') {
+            suggestions.push('Use divine abilities for both damage and healing')
+            if (enemy.maxHealth > 200) {
+                suggestions.push('This will be a long fight - manage holy power carefully')
+            }
+        }
+
+        if (character.characterClass === 'archer') {
+            suggestions.push('Use range advantage to avoid damage')
+            if (enemy.speed > 10) {
+                suggestions.push('Enemy is fast - focus on evasive maneuvers')
+            }
+        }
+
+        // Stat-based suggestions
+        if (enemy.defense > character.attack) {
+            suggestions.push('Enemy has high defense - consider using special abilities')
+        }
+        if (enemy.attack > character.defense + 10) {
+            suggestions.push('Enemy hits hard - prioritize defensive positioning')
+        }
+
+        return suggestions
+    }
+
+    /**
+     * Get character progression suggestions
+     */
+    getProgressionSuggestions(characterId) {
+        const character = this.getCharacterById(characterId)
+        if (!character) return []
+
+        const suggestions = []
+
+        // Experience-based suggestions
+        const expToNext = (character.level * 100) - character.experience
+        if (expToNext <= 50) {
+            suggestions.push(`Close to level up! Need ${expToNext} more experience`)
+        }
+
+        // Inventory suggestions
+        if (character.inventory.length < 3) {
+            suggestions.push('Consider acquiring more equipment')
+        }
+
+        // Skill suggestions
+        if (character.skills.length < character.level) {
+            suggestions.push('You can learn more skills at your current level')
+        }
+
+        return suggestions
+    }
+
+    /**
+     * Get all available character classes
+     */
+    getAvailableClasses() {
+        const classes = new Set()
+        this.getAllCharacters().forEach(char => {
+            classes.add(char.characterClass)
         })
+        return Array.from(classes)
     }
 
-    // Character selection
-    selectHero(id) {
-        console.log('Selecting hero:', id)
-        AppState.selectedHero = id
+    /**
+     * Get characters sorted by power level
+     */
+    getCharactersByPower() {
+        const allCharacters = this.getAllCharacters()
+        return allCharacters
+            .map(char => ({
+                ...char,
+                powerLevel: this.getCharacterPowerLevel(char.id)
+            }))
+            .sort((a, b) => b.powerLevel - a.powerLevel)
     }
 
-    // Character unlocking
-    unlockCharacter(id) {
-        const cost = AppState.characterCosts[id]
-        if (AppState.gold >= cost) {
-            AppState.gold -= cost
-            AppState.unlockedCharacters.push(id)
-            this.saveGameData()
-            return true
+    /**
+     * Check if character is ready for battle
+     */
+    isCharacterReady(characterId) {
+        const character = this.getCharacterById(characterId)
+        if (!character) return false
+
+        return {
+            ready: character.currentHealth > character.maxHealth * 0.3,
+            issues: [
+                ...(character.currentHealth <= character.maxHealth * 0.3 ? ['Low health'] : []),
+                ...(character.level < 2 ? ['Low level - consider training'] : []),
+                ...(character.inventory.length === 0 ? ['No equipment'] : [])
+            ]
         }
-        return false
     }
 
-    // Get characters that are available for selection
-    getFilteredCharacters() {
-        return AppState.playerTemplates.filter(c => AppState.unlockedCharacters.includes(c.id))
-    }
+    /**
+     * Get character comparison between two characters
+     */
+    compareCharacters(characterId1, characterId2) {
+        const char1 = this.getCharacterById(characterId1)
+        const char2 = this.getCharacterById(characterId2)
 
-    // Get characters that need to be unlocked
-    getLockedCharacters() {
-        return AppState.playerTemplates.filter(c => !AppState.unlockedCharacters.includes(c.id))
-    }
+        if (!char1 || !char2) return null
 
-    // Save game progress to localStorage
-    saveGameData() {
-        const gameData = {
-            gold: AppState.gold,
-            playerLevel: AppState.playerLevel,
-            unlockedCharacters: AppState.unlockedCharacters,
-            unlockedEnemies: AppState.unlockedEnemies,
-            defeatedBosses: AppState.defeatedBosses || [],
-            highestLevel: AppState.highestLevel || 1,
-            totalGoldEarned: AppState.totalGoldEarned || 0
-        }
-        localStorage.setItem('bossBattleData', JSON.stringify(gameData))
-    }
-
-    // Load game progress from localStorage
-    loadGameData() {
-        const savedData = localStorage.getItem('bossBattleData')
-        if (savedData) {
-            try {
-                const gameData = JSON.parse(savedData)
-                AppState.gold = gameData.gold || 0
-                AppState.playerLevel = gameData.playerLevel || 1
-                AppState.unlockedCharacters = gameData.unlockedCharacters || ['knight']
-                AppState.unlockedEnemies = gameData.unlockedEnemies || ['dragon']
-                AppState.defeatedBosses = gameData.defeatedBosses || []
-                AppState.highestLevel = gameData.highestLevel || 1
-                AppState.totalGoldEarned = gameData.totalGoldEarned || 0
-            } catch (error) {
-                console.error('Error loading game data:', error)
-                // If data is corrupted, use defaults
-                this.resetProgress()
+        return {
+            character1: {
+                name: char1.name,
+                powerLevel: this.getCharacterPowerLevel(characterId1),
+                strengths: this.getCharacterStrengths(char1),
+                weaknesses: this.getCharacterWeaknesses(char1)
+            },
+            character2: {
+                name: char2.name,
+                powerLevel: this.getCharacterPowerLevel(characterId2),
+                strengths: this.getCharacterStrengths(char2),
+                weaknesses: this.getCharacterWeaknesses(char2)
             }
         }
     }
 
-    // Reset all game progress
-    resetProgress() {
-        AppState.gold = 0
-        AppState.playerLevel = 1
-        AppState.unlockedCharacters = ['knight']
-        AppState.unlockedEnemies = ['dragon']
-        AppState.defeatedBosses = []
-        AppState.highestLevel = 1
-        AppState.totalGoldEarned = 0
-        this.saveGameData()
-        return 'Progress has been reset.'
+    /**
+     * Get character strengths
+     */
+    getCharacterStrengths(character) {
+        const strengths = []
+
+        if (character.attack > 25) strengths.push('High Attack')
+        if (character.defense > 15) strengths.push('Good Defense')
+        if (character.maxHealth > 100) strengths.push('High Health')
+        if (character.level > 5) strengths.push('Experienced')
+        if (character.skills?.length > 3) strengths.push('Many Skills')
+
+        return strengths
+    }
+
+    /**
+     * Get character weaknesses
+     */
+    getCharacterWeaknesses(character) {
+        const weaknesses = []
+
+        if (character.attack < 15) weaknesses.push('Low Attack')
+        if (character.defense < 10) weaknesses.push('Low Defense')
+        if (character.currentHealth < character.maxHealth * 0.5) weaknesses.push('Injured')
+        if (character.level < 3) weaknesses.push('Inexperienced')
+        if (!character.inventory?.length) weaknesses.push('No Equipment')
+
+        return weaknesses
     }
 }
 

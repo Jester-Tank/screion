@@ -7,14 +7,12 @@
     </div>
     
     <div class="row">
-      <!-- Characters List -->
       <div class="col-md-4">
         <div class="card">
           <div class="card-header">
             <h3>Available Heroes</h3>
           </div>
           <div class="card-body characters-list">
-            <!-- Paladins Section -->
             <div class="mb-3">
               <h4 class="text-primary">Paladins</h4>
               <div v-for="paladin in paladins" :key="paladin.id" 
@@ -34,7 +32,6 @@
               </button>
             </div>
             
-            <!-- Archers Section -->
             <div>
               <h4 class="text-success">Archers</h4>
               <div v-for="archer in archers" :key="archer.id" 
@@ -57,7 +54,6 @@
         </div>
       </div>
       
-      <!-- Character Details -->
       <div class="col-md-8">
         <div v-if="activeCharacter" class="card">
           <div class="card-header d-flex justify-content-between align-items-center"
@@ -69,27 +65,25 @@
           
           <div class="card-body">
             <div class="row">
-              <!-- Character Image -->
               <div class="col-md-4">
                 <img :src="activeCharacter.imageUrl" :alt="activeCharacter.name" class="img-fluid rounded mb-3">
                 <div class="progress mb-2">
                   <div class="progress-bar bg-danger" role="progressbar" 
-                       :style="{width: (activeCharacter.health) + '%'}" 
-                       aria-valuenow="activeCharacter.health" aria-valuemin="0" aria-valuemax="100">
-                    HP: {{ activeCharacter.health }}
+                       :style="{width: ((activeCharacter.currentHealth / activeCharacter.maxHealth) * 100) + '%'}" 
+                       :aria-valuenow="activeCharacter.currentHealth" aria-valuemin="0" :aria-valuemax="activeCharacter.maxHealth">
+                    HP: {{ activeCharacter.currentHealth || activeCharacter.maxHealth }} / {{ activeCharacter.maxHealth }}
                   </div>
                 </div>
                 <div class="progress mb-3">
                   <div class="progress-bar bg-info" role="progressbar" 
                        :style="{width: (activeCharacter.experience / (activeCharacter.level * 100) * 100) + '%'}" 
-                       aria-valuenow="activeCharacter.experience" aria-valuemin="0" 
+                       :aria-valuenow="activeCharacter.experience" aria-valuemin="0" 
                        :aria-valuemax="activeCharacter.level * 100">
                     XP: {{ activeCharacter.experience }} / {{ activeCharacter.level * 100 }}
                   </div>
                 </div>
               </div>
               
-              <!-- Character Stats -->
               <div class="col-md-8">
                 <p class="lead">{{ activeCharacter.description }}</p>
                 
@@ -171,18 +165,15 @@ import { archerService } from '../services/ArcherService.js'
 export default {
   setup() {
     onMounted(() => {
-      // If there are characters but none are active, set the first one active
       if (AppState.paladins.length > 0 && !AppState.activeCharacter) {
         paladinService.setActivePaladin(AppState.paladins[0].id)
       }
     })
     
-    // Computed properties
     const paladins = computed(() => AppState.paladins)
     const archers = computed(() => AppState.archers)
     const activeCharacter = computed(() => AppState.activeCharacter)
     
-    // Functions
     function setActivePaladin(paladinId) {
       paladinService.setActivePaladin(paladinId)
     }
@@ -220,11 +211,13 @@ export default {
     function castHeal() {
       if (!activeCharacter.value || activeCharacter.value.characterClass !== 'paladin') return
       
-      // For simplicity, heal self
       if (activeCharacter.value.holyPower >= 10) {
         activeCharacter.value.holyPower -= 10
         const healAmount = 5 + Math.floor(activeCharacter.value.level * 2)
-        activeCharacter.value.health += healAmount
+        activeCharacter.value.currentHealth = Math.min(
+          activeCharacter.value.maxHealth, 
+          (activeCharacter.value.currentHealth || activeCharacter.value.maxHealth) + healAmount
+        )
         alert(`Healed for ${healAmount} health!`)
       } else {
         alert('Not enough holy power!')
@@ -232,7 +225,6 @@ export default {
     }
     
     function openNewPaladinForm() {
-      // This would open a modal or navigate to a character creation page
       alert('Open paladin creation form - this would be implemented with a modal or navigation')
     }
     
