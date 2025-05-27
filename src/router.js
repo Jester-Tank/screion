@@ -1,33 +1,46 @@
+// src/router.js
 import { createRouter, createWebHashHistory } from 'vue-router'
-import HomePage from './pages/HomePage.vue'
-import AboutPage from './pages/AboutPage.vue'
-import AccountPage from './pages/AccountPage.vue'
-import CharactersPage from './pages/CharactersPage.vue'
+
+function loadPage(page) {
+  return () => import(`./pages/${page}.vue`)
+}
 
 const routes = [
   {
     path: '/',
     name: 'Home',
-    component: HomePage
+    component: loadPage('HomePage')
   },
   {
     path: '/about',
     name: 'About',
-    component: AboutPage
+    component: loadPage('AboutPage')
   },
   {
     path: '/characters',
     name: 'Characters',
-    component: CharactersPage
+    component: loadPage('CharacterPage')
+  },
+  {
+    path: '/bosses',
+    name: 'BossSelection',
+    component: loadPage('BossSelectionPage')
+  },
+  {
+    path: '/battle',
+    name: 'Battle',
+    component: loadPage('BattlePage')
   },
   {
     path: '/account',
     name: 'Account',
-    component: AccountPage
+    component: loadPage('AccountPage')
   }
 ]
 
 export const router = createRouter({
+  linkActiveClass: 'router-link-active',
+  linkExactActiveClass: 'router-link-exact-active',
   history: createWebHashHistory(),
   routes
 })

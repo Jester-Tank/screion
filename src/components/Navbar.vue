@@ -4,33 +4,56 @@
       <router-link class="navbar-brand" to="/">
         <i class="mdi mdi-sword-cross"></i> Heroes of the Realm
       </router-link>
-      
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" 
-              data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" 
-              aria-expanded="false" aria-label="Toggle navigation">
+
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
+        aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
       </button>
-      
+
       <div class="collapse navbar-collapse" id="navbarSupportedContent">
         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
           <li class="nav-item">
             <router-link class="nav-link" to="/">Home</router-link>
           </li>
-          
+
           <li class="nav-item">
             <router-link class="nav-link" to="/characters">Characters</router-link>
           </li>
-          
+
+          <li class="nav-item">
+            <router-link class="nav-link" to="/bosses">Boss Battles</router-link>
+          </li>
+
           <li class="nav-item">
             <router-link class="nav-link" to="/about">About</router-link>
           </li>
         </ul>
-        
-        <div class="d-flex">
-          <div v-if="activeCharacter" class="d-flex align-items-center text-light me-3">
+
+        <div class="d-flex align-items-center">
+          <!-- Gold Display -->
+          <div class="text-light me-3 d-flex align-items-center">
+            <i class="mdi mdi-currency-usd text-warning me-1"></i>
+            <span>{{ gold }}</span>
+          </div>
+
+          <!-- Level Display -->
+          <div class="text-light me-3 d-flex align-items-center">
+            <i class="mdi mdi-trophy text-success me-1"></i>
+            <span>Lv.{{ playerLevel }}</span>
+          </div>
+
+          <!-- Active Character Display -->
+          <div v-if="activeCharacter" class="text-light me-3 d-flex align-items-center">
+            <i class="mdi mdi-account-circle me-1"></i>
             <span>{{ activeCharacter.name }}</span>
           </div>
-          
+
+          <!-- Selected Hero Display -->
+          <div v-if="selectedHero && !activeCharacter" class="text-light me-3 d-flex align-items-center">
+            <i class="mdi mdi-shield-account me-1"></i>
+            <span>{{ getSelectedHeroName() }}</span>
+          </div>
+
           <router-link class="btn btn-outline-light" to="/account">
             <i class="mdi mdi-account"></i> Account
           </router-link>
@@ -47,9 +70,22 @@ import { AppState } from '../AppState.js'
 export default {
   setup() {
     const activeCharacter = computed(() => AppState.activeCharacter)
-    
+    const selectedHero = computed(() => AppState.selectedHero)
+    const gold = computed(() => AppState.gold)
+    const playerLevel = computed(() => AppState.playerLevel)
+
+    function getSelectedHeroName() {
+      if (!selectedHero.value) return ''
+      const hero = AppState.playerTemplates.find(h => h.id === selectedHero.value)
+      return hero ? hero.name : ''
+    }
+
     return {
-      activeCharacter
+      activeCharacter,
+      selectedHero,
+      gold,
+      playerLevel,
+      getSelectedHeroName
     }
   }
 }
@@ -62,5 +98,38 @@ export default {
   left: 0;
   right: 0;
   z-index: 1000;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.navbar-brand {
+  font-weight: bold;
+  font-size: 1.3rem;
+
+  i {
+    color: #ffc107;
+    margin-right: 0.5rem;
+  }
+}
+
+.nav-link {
+  font-weight: 500;
+  transition: color 0.3s ease;
+
+  &:hover {
+    color: #ffc107 !important;
+  }
+
+  &.router-link-active {
+    color: #ffc107 !important;
+    font-weight: bold;
+  }
+}
+
+.text-light {
+  font-size: 0.9rem;
+
+  i {
+    font-size: 1.1rem;
+  }
 }
 </style>
