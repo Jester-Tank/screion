@@ -124,8 +124,344 @@ class CharacterService {
     }
 
     /**
-     * Create all character attacks
+     * Create a fresh player instance from actual character data for battle
+     * @param {string} characterId - The ID of the character template
+     * @returns {Player|null} A new player instance ready for battle
      */
+    createPlayerInstance(characterId) {
+        // First try to find an existing leveled character
+        let existingCharacter = null
+
+        if (characterId === 'paladin') {
+            // Find the paladin character
+            existingCharacter = AppState.paladins.find(p => p.id || p.name)
+        } else if (characterId === 'archer') {
+            // Find the archer character  
+            existingCharacter = AppState.archers.find(a => a.id || a.name)
+        }
+
+        // If we found an existing character, use their stats and level
+        if (existingCharacter) {
+            console.log(`Using existing ${existingCharacter.name} at level ${existingCharacter.level}`)
+
+            // Create battle instance from existing character
+            const playerData = {
+                id: characterId,
+                name: existingCharacter.name,
+                characterClass: existingCharacter.characterClass || characterId,
+                maxHealth: existingCharacter.maxHealth,
+                currentHealth: existingCharacter.maxHealth, // Start with full health for battle
+                attack: existingCharacter.attack,
+                defense: existingCharacter.defense,
+                speed: existingCharacter.speed || 10,
+                level: existingCharacter.level,
+                imgUrl: existingCharacter.imageUrl || existingCharacter.imgUrl,
+                description: existingCharacter.description,
+                title: existingCharacter.title,
+                holyPower: existingCharacter.holyPower,
+                range: existingCharacter.range,
+                attacks: this.getCharacterAttacks(characterId, existingCharacter.level),
+                items: this.getCharacterItems(characterId, existingCharacter.level),
+                statusEffects: []
+            }
+
+            const player = new Player(playerData)
+
+            console.log(`Created battle instance for ${player.name}:`, {
+                level: player.level,
+                health: player.maxHealth,
+                attack: player.attack,
+                defense: player.defense
+            })
+
+            return player
+        }
+
+        // Fallback to template system if no existing character found
+        const template = this.getCharacterTemplate(characterId)
+        if (!template) {
+            console.error(`Character template not found: ${characterId}`)
+            return null
+        }
+
+        // Create from template and apply player level scaling
+        const playerData = {
+            ...template,
+            attacks: template.attacks.map(attack => ({
+                ...attack,
+                currentCooldown: 0
+            })),
+            items: template.items.map(item => ({ ...item })),
+            statusEffects: []
+        }
+
+        const player = new Player(playerData)
+        this.applyLevelScaling(player, AppState.playerLevel)
+
+        return player
+    }
+
+    /**
+     * Get character attacks scaled for their level
+     * @param {string} characterId - The character class ID
+     * @param {number} characterLevel - The character's current level
+     * @returns {Attack[]} Array of scaled attacks
+     */
+    getCharacterAttacks(characterId, characterLevel) {
+        const baseAttacks = this.createCharacterAttacks()
+        let characterAttacks = []
+
+        switch (characterId) {
+            case 'paladin':
+                characterAttacks = [
+                    baseAttacks.holyStrike,
+                    baseAttacks.divineShield,
+                    baseAttacks.smite,
+                    baseAttacks.layOnHands
+                ]
+                break
+            case 'archer':
+                characterAttacks = [
+                    baseAttacks.quickShot,
+                    baseAttacks.preciseAim,
+                    baseAttacks.multiShot,
+                    baseAttacks.evasiveManeuvers
+                ]
+                break
+            case 'knight':
+                characterAttacks = [
+                    baseAttacks.swordStrike,
+                    baseAttacks.shieldBash,
+                    baseAttacks.battleCry,
+                    baseAttacks.defensiveStance
+                ]
+                break
+            case 'mage':
+                characterAttacks = [
+                    baseAttacks.fireball,
+                    baseAttacks.iceShards,
+                    baseAttacks.lightningBolt,
+                    baseAttacks.magicalBarrier
+                ]
+                break
+            default:
+                characterAttacks = [baseAttacks.holyStrike]
+        }
+
+        // Scale attacks based on character level
+        const bonusLevels = Math.max(0, characterLevel - 1)
+        characterAttacks.forEach(attack => {
+            const originalDamage = attack.damage
+            const originalHeal = attack.heal
+            const originalSelfHeal = attack.selfHeal
+            const originalBarrier = attack.barrier
+
+            if (originalDamage > 0) {
+                attack.damage = originalDamage + Math.floor(originalDamage * 0.15 * bonusLevels)
+            }
+            if (originalHeal > 0) {
+                attack.heal = originalHeal + Math.floor(originalHeal * 0.15 * bonusLevels)
+            }
+            if (originalSelfHeal > 0) {
+                attack.selfHeal = originalSelfHeal + Math.floor(originalSelfHeal * 0.15 * bonusLevels)
+            }
+            if (originalBarrier > 0) {
+                attack.barrier = originalBarrier + Math.floor(originalBarrier * 0.15 * bonusLevels)
+            }
+            attack.currentCooldown = 0
+        })
+
+        return characterAttacks
+    }
+
+    /**
+     * Get character items appropriate for their level
+     * @param {string} characterId - The character class ID  
+     * @param {number} characterLevel - The character's current level
+     * @returns {Item[]} Array of items
+     */
+    getCharacterItems(characterId, characterLevel) {
+        const characterItems = this.createCharacterItems()
+        let items = []
+
+        // Base items for all characters
+        items.push(characterItems.healthPotion)
+
+        // Class-specific items
+        switch (characterId) {
+            case 'paladin':
+                items.push(characterItems.holyWater)
+                break
+            case 'archer':
+                items.push(characterItems.arrowPoison)
+                break
+            case 'knight':
+                items.push(characterItems.strengthPotion)
+                break
+            case 'mage':
+                items.push(characterItems.manaPotion)
+                break
+        }
+
+        // Add level-based items
+        if (characterLevel >= 3) {
+            items.push(characterItems.superHealthPotion)
+        }
+        if (characterLevel >= 5) {
+            items.push(characterItems.elixirOfPower)
+        }
+        if (characterLevel >= 7) {
+            items.push(characterItems.phoenixFeather)
+        }
+        if (characterLevel >= 10) {
+            items.push(characterItems.dragonScale)
+        }
+
+        return items
+    }
+
+    /**
+     * Apply level scaling to boost character stats (fallback method)
+     * @param {Player} character - The character to boost
+     * @param {number} playerLevel - The current player level
+     */
+    applyLevelScaling(character, playerLevel) {
+        const level = Math.max(1, playerLevel)
+        const bonusLevels = level - 1 // No bonus at level 1
+
+        if (bonusLevels <= 0) return character
+
+        console.log(`Applying level ${level} scaling to ${character.name} (${bonusLevels} bonus levels)`)
+
+        // Base stats to calculate bonuses from
+        const baseHealth = character.maxHealth
+        const baseAttack = character.attack
+        const baseDefense = character.defense
+
+        // Calculate bonuses based on character class
+        let healthMultiplier, attackMultiplier, defenseMultiplier
+
+        switch (character.characterClass) {
+            case 'paladin':
+                healthMultiplier = 0.15    // +15% HP per level
+                attackMultiplier = 0.12    // +12% ATK per level
+                defenseMultiplier = 0.18   // +18% DEF per level
+                break
+            case 'knight':
+                healthMultiplier = 0.18    // +18% HP per level (tankiest)
+                attackMultiplier = 0.10    // +10% ATK per level
+                defenseMultiplier = 0.20   // +20% DEF per level (most defensive)
+                break
+            case 'mage':
+                healthMultiplier = 0.12    // +12% HP per level (squishiest)
+                attackMultiplier = 0.18    // +18% ATK per level (highest damage)
+                defenseMultiplier = 0.08   // +8% DEF per level (lowest defense)
+                break
+            case 'archer':
+                healthMultiplier = 0.14    // +14% HP per level
+                attackMultiplier = 0.15    // +15% ATK per level
+                defenseMultiplier = 0.12   // +12% DEF per level
+                break
+            default:
+                healthMultiplier = 0.15
+                attackMultiplier = 0.12
+                defenseMultiplier = 0.15
+        }
+
+        // Apply percentage-based bonuses
+        const healthBonus = Math.floor(baseHealth * healthMultiplier * bonusLevels)
+        const attackBonus = Math.floor(baseAttack * attackMultiplier * bonusLevels)
+        const defenseBonus = Math.floor(baseDefense * defenseMultiplier * bonusLevels)
+
+        character.maxHealth += healthBonus
+        character.currentHealth = character.maxHealth // Start with full health
+        character.attack += attackBonus
+        character.defense += defenseBonus
+        character.level = level
+
+        // Enhance attacks based on level
+        this.enhanceAttacks(character, bonusLevels)
+
+        // Add more items based on level
+        this.addLevelItems(character, level)
+
+        console.log(`${character.name} scaled to level ${level}:`, {
+            healthBonus,
+            attackBonus,
+            defenseBonus,
+            finalStats: {
+                health: character.maxHealth,
+                attack: character.attack,
+                defense: character.defense
+            }
+        })
+
+        return character
+    }
+
+    /**
+     * Enhance character attacks based on level (fallback method)
+     * @param {Player} character - The character whose attacks to enhance
+     * @param {number} bonusLevels - Number of bonus levels
+     */
+    enhanceAttacks(character, bonusLevels) {
+        if (bonusLevels <= 0) return
+
+        character.attacks.forEach(attack => {
+            const baseDamage = attack.damage
+            const baseHeal = attack.heal
+            const baseSelfHeal = attack.selfHeal
+            const baseBarrier = attack.barrier
+
+            if (baseDamage > 0) {
+                // Increase attack damage by 15% per level
+                const damageBonus = Math.floor(baseDamage * 0.15 * bonusLevels)
+                attack.damage += damageBonus
+            }
+            if (baseHeal > 0) {
+                // Increase healing by 15% per level
+                const healBonus = Math.floor(baseHeal * 0.15 * bonusLevels)
+                attack.heal += healBonus
+            }
+            if (baseSelfHeal > 0) {
+                // Increase self healing by 15% per level
+                const selfHealBonus = Math.floor(baseSelfHeal * 0.15 * bonusLevels)
+                attack.selfHeal += selfHealBonus
+            }
+            if (baseBarrier > 0) {
+                // Increase barrier by 15% per level
+                const barrierBonus = Math.floor(baseBarrier * 0.15 * bonusLevels)
+                attack.barrier += barrierBonus
+            }
+        })
+    }
+
+    /**
+     * Add additional items based on level (fallback method)
+     * @param {Player} character - The character to give items to
+     * @param {number} level - The player level
+     */
+    addLevelItems(character, level) {
+        const characterItems = this.createCharacterItems()
+
+        // Add better potions at higher levels
+        if (level >= 3) {
+            character.items.push(characterItems.superHealthPotion)
+        }
+
+        if (level >= 5) {
+            character.items.push(characterItems.elixirOfPower)
+        }
+
+        if (level >= 7) {
+            character.items.push(characterItems.phoenixFeather)
+        }
+
+        if (level >= 10) {
+            character.items.push(characterItems.dragonScale)
+        }
+    }
+
     createCharacterAttacks() {
         return {
             // Paladin attacks
@@ -322,9 +658,6 @@ class CharacterService {
         }
     }
 
-    /**
-     * Create character items
-     */
     createCharacterItems() {
         return {
             healthPotion: new Item({
@@ -360,7 +693,7 @@ class CharacterService {
             manaPotion: new Item({
                 id: 'mana-potion',
                 name: 'Mana Potion',
-                type: 'heal',
+                type: 'health',
                 value: 30,
                 description: 'Restores 30 health and removes burn effects.',
                 imgUrl: 'https://placehold.co/100x100?text=Mana',
@@ -375,74 +708,69 @@ class CharacterService {
                 description: 'Increases attack by 3 and may poison enemies.',
                 imgUrl: 'https://placehold.co/100x100?text=Poison',
                 cost: 80
+            }),
+
+            // High-level items
+            superHealthPotion: new Item({
+                id: 'super-health-potion',
+                name: 'Super Health Potion',
+                type: 'health',
+                value: 80,
+                description: 'Restores 80 health points.',
+                imgUrl: 'https://placehold.co/100x100?text=Super+HP',
+                cost: 150
+            }),
+
+            elixirOfPower: new Item({
+                id: 'elixir-of-power',
+                name: 'Elixir of Power',
+                type: 'attack',
+                value: 10,
+                description: 'Increases attack power by 10.',
+                imgUrl: 'https://placehold.co/100x100?text=Power',
+                cost: 200
+            }),
+
+            phoenixFeather: new Item({
+                id: 'phoenix-feather',
+                name: 'Phoenix Feather',
+                type: 'health',
+                value: 120,
+                description: 'Restores 120 health and removes all debuffs.',
+                imgUrl: 'https://placehold.co/100x100?text=Phoenix',
+                cost: 300
+            }),
+
+            dragonScale: new Item({
+                id: 'dragon-scale',
+                name: 'Dragon Scale',
+                type: 'defense',
+                value: 8,
+                description: 'Increases defense by 8 for the entire battle.',
+                imgUrl: 'https://placehold.co/100x100?text=Scale',
+                cost: 400
             })
         }
     }
 
-    /**
-     * Get a character template by ID
-     * @param {string} characterId - The ID of the character
-     * @returns {Player|null} The character template or null if not found
-     */
     getCharacterTemplate(characterId) {
         return AppState.playerTemplates.find(char => char.id === characterId) || null
     }
 
-    /**
-     * Create a fresh player instance from template for battle
-     * @param {string} characterId - The ID of the character template
-     * @returns {Player|null} A new player instance ready for battle
-     */
-    createPlayerInstance(characterId) {
-        const template = this.getCharacterTemplate(characterId)
-        if (!template) {
-            console.error(`Character template not found: ${characterId}`)
-            return null
-        }
-
-        // Create a deep copy of the character
-        const playerData = {
-            ...template,
-            currentHealth: template.maxHealth,
-            attacks: template.attacks.map(attack => ({
-                ...attack,
-                currentCooldown: 0
-            })),
-            items: template.items.map(item => ({ ...item })),
-            statusEffects: []
-        }
-
-        return new Player(playerData)
-    }
-
-    /**
-     * Get all available characters (unlocked ones)
-     * @returns {Player[]} Array of available character templates
-     */
     getAvailableCharacters() {
         return AppState.playerTemplates.filter(char =>
             AppState.unlockedCharacters.includes(char.id)
         )
     }
 
-    /**
-     * Get all character templates
-     * @returns {Player[]} Array of all character templates
-     */
     getAllCharacters() {
         return AppState.playerTemplates
     }
 
-    /**
-     * Save game data to localStorage
-     */
     saveGameData() {
         AppState.saveGameData()
     }
 
-    /**
-     * Load game data from localStorage
-     */
     loadGameData() {
         AppState.loadGameData()
     }

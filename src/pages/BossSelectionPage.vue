@@ -15,10 +15,20 @@
                         <h4>Select Your Hero First</h4>
                         <p>Choose which character you want to fight with:</p>
                         <div class="hero-selection d-flex justify-content-center gap-3 flex-wrap">
-                            <button v-for="template in playerTemplates" :key="template.id"
-                                class="btn btn-outline-primary" @click="selectHero(template.id)">
-                                <img :src="template.imgUrl" :alt="template.name" class="hero-avatar me-2">
-                                {{ template.name }}
+                            <!-- Show actual leveled characters -->
+                            <button v-for="character in availableHeroes" :key="character.id || character.name"
+                                class="btn btn-outline-primary hero-select-btn" @click="selectHero(character.heroId)">
+                                <img :src="character.imageUrl || character.imgUrl" :alt="character.name"
+                                    class="hero-avatar me-2" />
+                                <div class="hero-info">
+                                    <div class="hero-name">{{ character.name }}</div>
+                                    <div class="hero-stats">
+                                        Lv.{{ character.level }} |
+                                        HP: {{ character.maxHealth }} |
+                                        ATK: {{ character.attack }} |
+                                        DEF: {{ character.defense }}
+                                    </div>
+                                </div>
                             </button>
                         </div>
                     </div>
@@ -45,7 +55,7 @@
             <div class="col-12 col-md-6 col-lg-4 mb-4" v-for="boss in availableBosses" :key="boss.id">
                 <div class="boss-card card h-100" :class="{ 'selected': selectedEnemy === boss.id }">
                     <div class="boss-image">
-                        <img :src="boss.imgUrl" :alt="boss.name" class="card-img-top">
+                        <img :src="boss.imgUrl" :alt="boss.name" class="card-img-top" />
                         <div class="difficulty-badge" :class="getDifficultyClass(boss)">
                             {{ getDifficulty(boss) }}
                         </div>
@@ -109,7 +119,7 @@
                     <div class="col-12 col-md-6 col-lg-4 mb-4" v-for="boss in lockedBosses" :key="boss.id">
                         <div class="boss-card card h-100 locked-boss">
                             <div class="boss-image">
-                                <img :src="boss.imgUrl" :alt="boss.name" class="card-img-top locked-image">
+                                <img :src="boss.imgUrl" :alt="boss.name" class="card-img-top locked-image" />
                                 <div class="lock-overlay">
                                     <i class="mdi mdi-lock text-white" style="font-size: 3rem;"></i>
                                 </div>
@@ -205,6 +215,30 @@ export default {
         const lockedBosses = computed(() =>
             AppState.bossTemplates.filter(boss => !AppState.unlockedEnemies.includes(boss.id))
         )
+
+        // Show actual leveled characters instead of templates
+        const availableHeroes = computed(() => {
+            const heroes = []
+
+            // Add paladins
+            AppState.paladins.forEach(paladin => {
+                heroes.push({
+                    ...paladin,
+                    heroId: 'paladin'
+                })
+            })
+
+            // Add archers  
+            AppState.archers.forEach(archer => {
+                heroes.push({
+                    ...archer,
+                    heroId: 'archer'
+                })
+            })
+
+            return heroes
+        })
+
         const playerTemplates = computed(() =>
             AppState.playerTemplates.filter(template => AppState.unlockedCharacters.includes(template.id))
         )
@@ -233,6 +267,17 @@ export default {
 
         function getSelectedHeroName() {
             if (!selectedHero.value) return ''
+
+            // Look for actual character name first
+            if (selectedHero.value === 'paladin') {
+                const paladin = AppState.paladins[0]
+                if (paladin) return `${paladin.name} (Lv.${paladin.level})`
+            } else if (selectedHero.value === 'archer') {
+                const archer = AppState.archers[0]
+                if (archer) return `${archer.name} (Lv.${archer.level})`
+            }
+
+            // Fallback to template
             const hero = AppState.playerTemplates.find(h => h.id === selectedHero.value)
             return hero ? hero.name : ''
         }
@@ -299,6 +344,7 @@ export default {
             availableBosses,
             lockedBosses,
             playerTemplates,
+            availableHeroes,
             selectedHero,
             selectedEnemy,
             gold,
@@ -430,11 +476,42 @@ export default {
 }
 
 .hero-selection {
+    .hero-select-btn {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem;
+        margin: 0.5rem;
+        border: 2px solid #007bff;
+        border-radius: 8px;
+        background-color: rgba(0, 123, 255, 0.1);
+        color: #000;
+        transition: all 0.3s ease;
+
+        &:hover {
+            background-color: rgba(0, 123, 255, 0.2);
+            transform: translateY(-2px);
+        }
+    }
+
     .hero-avatar {
-        width: 30px;
-        height: 30px;
+        width: 40px;
+        height: 40px;
         border-radius: 50%;
         object-fit: cover;
+    }
+
+    .hero-info {
+        text-align: left;
+
+        .hero-name {
+            font-weight: bold;
+            font-size: 1rem;
+        }
+
+        .hero-stats {
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
     }
 }
 
