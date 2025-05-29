@@ -1,619 +1,280 @@
-// src/services/CharacterService.js
+// src/services/GameService.js
 import { AppState } from "../AppState.js"
-import { Player } from "../models/Player.js"
-import { Attack } from "../models/Attack.js"
-import { Item } from "../models/Item.js"
 
-class CharacterService {
+class GameService {
     /**
-     * Initialize all character templates and their data
+     * Initialize the game - load data and set up initial state
      */
-    initializeCharacterData() {
-        // Create character attacks
-        const characterAttacks = this.createCharacterAttacks()
+    initializeGame() {
+        console.log('Initializing game...')
 
-        // Create character items
-        const characterItems = this.createCharacterItems()
+        // Load saved game data
+        AppState.loadGameData()
 
-        // Create character templates
-        const playerTemplates = [
-            new Player({
-                id: 'paladin',
-                name: 'Sir Galahad',
-                characterClass: 'paladin',
-                maxHealth: 120,
-                currentHealth: 120,
-                attack: 25,
-                defense: 20,
-                speed: 12,
-                level: 1,
-                imgUrl: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=400&fit=crop',
-                description: 'A holy warrior blessed with divine power and unwavering faith.',
-                title: 'Divine Protector',
-                attacks: [
-                    characterAttacks.holyStrike,
-                    characterAttacks.divineShield,
-                    characterAttacks.smite,
-                    characterAttacks.layOnHands
-                ],
-                items: [
-                    characterItems.healthPotion,
-                    characterItems.holyWater
-                ]
-            }),
+        // Initialize services after they're loaded
+        this.initializeServices()
 
-            new Player({
-                id: 'knight',
-                name: 'Sir Gareth',
-                characterClass: 'knight',
-                maxHealth: 140,
-                currentHealth: 140,
-                attack: 30,
-                defense: 25,
-                speed: 10,
-                level: 1,
-                imgUrl: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=400&fit=crop',
-                description: 'A heavily armored warrior with unmatched defensive capabilities.',
-                title: 'Stalwart Defender',
-                attacks: [
-                    characterAttacks.swordStrike,
-                    characterAttacks.shieldBash,
-                    characterAttacks.battleCry,
-                    characterAttacks.defensiveStance
-                ],
-                items: [
-                    characterItems.healthPotion,
-                    characterItems.strengthPotion
-                ]
-            }),
+        console.log('Game initialized successfully')
+    }
 
-            new Player({
-                id: 'mage',
-                name: 'Eldara the Wise',
-                characterClass: 'mage',
-                maxHealth: 90,
-                currentHealth: 90,
-                attack: 35,
-                defense: 10,
-                speed: 18,
-                level: 1,
-                imgUrl: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=400&fit=crop',
-                description: 'A master of arcane arts with devastating magical attacks.',
-                title: 'Arcane Scholar',
-                attacks: [
-                    characterAttacks.fireball,
-                    characterAttacks.iceShards,
-                    characterAttacks.lightningBolt,
-                    characterAttacks.magicalBarrier
-                ],
-                items: [
-                    characterItems.manaPotion,
-                    characterItems.healthPotion
-                ]
-            }),
+    /**
+     * Initialize services to avoid circular dependencies
+     */
+    async initializeServices() {
+        try {
+            // Dynamic imports to avoid circular dependencies
+            if (!this.characterService) {
+                const charModule = await import('./CharacterService.js')
+                this.characterService = charModule.characterService
+            }
 
-            new Player({
-                id: 'archer',
-                name: 'Sylvia Swiftbow',
-                characterClass: 'archer',
-                maxHealth: 100,
-                currentHealth: 100,
-                attack: 28,
-                defense: 15,
-                speed: 20,
-                level: 1,
-                imgUrl: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=400&fit=crop',
-                description: 'A skilled marksman with deadly precision and agility.',
-                title: 'Master Archer',
-                attacks: [
-                    characterAttacks.quickShot,
-                    characterAttacks.preciseAim,
-                    characterAttacks.multiShot,
-                    characterAttacks.evasiveManeuvers
-                ],
-                items: [
-                    characterItems.healthPotion,
-                    characterItems.arrowPoison
-                ]
+            if (!this.bossDataService) {
+                const bossModule = await import('./BossDataService.js')
+                this.bossDataService = bossModule.bossDataService
+            }
+
+            // Initialize data
+            if (AppState.playerTemplates.length === 0) {
+                this.characterService.initializeCharacterData()
+            }
+
+            if (AppState.bossTemplates.length === 0) {
+                this.bossDataService.initializeBossData()
+            }
+        } catch (error) {
+            console.error('Error initializing services:', error)
+        }
+    }
+
+    /**
+     * Start a battle between selected hero and boss
+     * @param {string} heroId - The ID of the selected hero
+     * @param {string} bossId - The ID of the selected boss
+     */
+    async startBattle(heroId, bossId) {
+        console.log(`Starting battle: ${heroId} vs ${bossId}`)
+
+        try {
+            // Ensure services are initialized
+            await this.initializeServices()
+
+            // Create fresh player instance with level scaling
+            const player = this.characterService.createPlayerInstance(heroId)
+            if (!player) {
+                throw new Error(`Failed to create player instance: ${heroId}`)
+            }
+
+            // Create fresh boss instance
+            const boss = this.bossDataService.createBossInstance(bossId)
+            if (!boss) {
+                throw new Error(`Failed to create boss instance: ${bossId}`)
+            }
+
+            // Set up battle state
+            AppState.battleState.player = player
+            AppState.battleState.boss = boss
+            AppState.battleState.battleActive = true
+            AppState.battleState.playerTurn = true
+            AppState.battleState.turnCount = 0
+            AppState.battleState.battleLog = []
+
+            // Reset status effects
+            AppState.battleState.playerBarrier = 0
+            AppState.battleState.playerDodging = false
+            AppState.battleState.playerBurning = false
+            AppState.battleState.playerSlowed = false
+            AppState.battleState.bossStunned = false
+
+            // Add initial battle log entry
+            AppState.battleLog.push(`Level ${player.level} ${player.name} faces off against ${boss.name}!`)
+            AppState.battleLog.push(`${player.name}: ${player.maxHealth} HP, ${player.attack} ATK, ${player.defense} DEF`)
+            AppState.battleLog.push(`The battle begins!`)
+
+            console.log('Battle started successfully:', {
+                player: `${player.name} (Lv.${player.level})`,
+                playerStats: { hp: player.maxHealth, atk: player.attack, def: player.defense },
+                boss: boss.name,
+                bossStats: { hp: boss.maxHealth, atk: boss.attack, def: boss.defense }
             })
-        ]
-
-        // Set player templates in AppState
-        AppState.setPlayerTemplates(playerTemplates)
-        console.log('Character templates initialized:', playerTemplates.length, 'characters loaded')
+        } catch (error) {
+            console.error('Error starting battle:', error)
+            throw error
+        }
     }
 
     /**
-     * Create a fresh player instance from template for battle with level scaling
-     * @param {string} characterId - The ID of the character template
-     * @returns {Player|null} A new player instance ready for battle
+     * End the player's turn and start boss turn
      */
-    createPlayerInstance(characterId) {
-        const template = this.getCharacterTemplate(characterId)
-        if (!template) {
-            console.error(`Character template not found: ${characterId}`)
-            return null
-        }
+    endPlayerTurn() {
+        if (!AppState.battleActive) return
+        console.log('Ending player turn')
 
-        // Create a deep copy of the character
-        const playerData = {
-            ...template,
-            attacks: template.attacks.map(attack => ({
-                ...attack,
-                currentCooldown: 0
-            })),
-            items: template.items.map(item => ({ ...item })),
-            statusEffects: []
-        }
+        // Switch to boss turn
+        AppState.playerTurn = false
 
-        const player = new Player(playerData)
-
-        // Apply level scaling based on current player level
-        this.applyLevelScaling(player, AppState.playerLevel)
-
-        console.log(`Created ${player.name} at level ${AppState.playerLevel}:`, {
-            health: player.maxHealth,
-            attack: player.attack,
-            defense: player.defense
-        })
-
-        return player
+        // Start boss turn after a short delay
+        setTimeout(() => {
+            this.processBossTurn()
+        }, 1000)
     }
 
     /**
-     * Apply level scaling to boost character stats
-     * @param {Player} character - The character to boost
-     * @param {number} playerLevel - The current player level
+     * Process the boss's turn (simplified AI)
      */
-    applyLevelScaling(character, playerLevel) {
-        const level = Math.max(1, playerLevel)
-        const bonusLevels = level - 1 // No bonus at level 1
+    processBossTurn() {
+        if (!AppState.battleActive || AppState.playerTurn) return
+        console.log('Processing boss turn')
 
-        if (bonusLevels <= 0) return character
+        const boss = AppState.boss
+        const player = AppState.player
 
-        console.log(`Applying level ${level} scaling to ${character.name} (${bonusLevels} bonus levels)`)
+        if (boss && player && boss.attacks && boss.attacks.length > 0) {
+            // Pick a random attack
+            const attack = boss.attacks[Math.floor(Math.random() * boss.attacks.length)]
 
-        // Base stats to calculate bonuses from
-        const baseHealth = character.maxHealth
-        const baseAttack = character.attack
-        const baseDefense = character.defense
+            // Calculate damage
+            const baseDamage = attack.damage || boss.attack
+            const damage = Math.max(1, baseDamage - Math.floor(player.defense / 2))
 
-        // Calculate bonuses based on character class
-        let healthMultiplier, attackMultiplier, defenseMultiplier
+            // Apply damage
+            player.currentHealth = Math.max(0, player.currentHealth - damage)
 
-        switch (character.characterClass) {
-            case 'paladin':
-                healthMultiplier = 0.15    // +15% HP per level
-                attackMultiplier = 0.12    // +12% ATK per level
-                defenseMultiplier = 0.18   // +18% DEF per level
-                break
-            case 'knight':
-                healthMultiplier = 0.18    // +18% HP per level (tankiest)
-                attackMultiplier = 0.10    // +10% ATK per level
-                defenseMultiplier = 0.20   // +20% DEF per level (most defensive)
-                break
-            case 'mage':
-                healthMultiplier = 0.12    // +12% HP per level (squishiest)
-                attackMultiplier = 0.18    // +18% ATK per level (highest damage)
-                defenseMultiplier = 0.08   // +8% DEF per level (lowest defense)
-                break
-            case 'archer':
-                healthMultiplier = 0.14    // +14% HP per level
-                attackMultiplier = 0.15    // +15% ATK per level
-                defenseMultiplier = 0.12   // +12% DEF per level
-                break
-            default:
-                healthMultiplier = 0.15
-                attackMultiplier = 0.12
-                defenseMultiplier = 0.15
+            AppState.battleLog.push(`${boss.name} uses ${attack.name} and deals ${damage} damage to ${player.name}!`)
+
+            // Check if player is defeated
+            if (player.currentHealth <= 0) {
+                this.endBattle(false)
+                return
+            }
+        } else {
+            // Fallback basic attack
+            const damage = Math.max(1, (boss?.attack || 20) - Math.floor((player?.defense || 0) / 2))
+            player.currentHealth = Math.max(0, player.currentHealth - damage)
+            AppState.battleLog.push(`${boss?.name || 'Enemy'} attacks for ${damage} damage!`)
+
+            if (player.currentHealth <= 0) {
+                this.endBattle(false)
+                return
+            }
         }
 
-        // Apply percentage-based bonuses
-        const healthBonus = Math.floor(baseHealth * healthMultiplier * bonusLevels)
-        const attackBonus = Math.floor(baseAttack * attackMultiplier * bonusLevels)
-        const defenseBonus = Math.floor(baseDefense * defenseMultiplier * bonusLevels)
-
-        character.maxHealth += healthBonus
-        character.currentHealth = character.maxHealth // Start with full health
-        character.attack += attackBonus
-        character.defense += defenseBonus
-        character.level = level
-
-        // Enhance attacks based on level
-        this.enhanceAttacks(character, bonusLevels)
-
-        // Add more items based on level
-        this.addLevelItems(character, level)
-
-        console.log(`${character.name} scaled to level ${level}:`, {
-            healthBonus,
-            attackBonus,
-            defenseBonus,
-            finalStats: {
-                health: character.maxHealth,
-                attack: character.attack,
-                defense: character.defense
-            }
-        })
-
-        return character
+        this.endBossTurn()
     }
 
     /**
-     * Enhance character attacks based on level
-     * @param {Player} character - The character whose attacks to enhance
-     * @param {number} bonusLevels - Number of bonus levels
+     * End the boss's turn and return to player turn
      */
-    enhanceAttacks(character, bonusLevels) {
-        if (bonusLevels <= 0) return
+    endBossTurn() {
+        if (!AppState.battleActive) return
+        console.log('Ending boss turn')
 
-        character.attacks.forEach(attack => {
-            const baseDamage = attack.damage
-            const baseHeal = attack.heal
-            const baseSelfHeal = attack.selfHeal
-            const baseBarrier = attack.barrier
+        // Switch back to player turn
+        AppState.playerTurn = true
+        AppState.turnCount++
 
-            if (baseDamage > 0) {
-                // Increase attack damage by 15% per level
-                const damageBonus = Math.floor(baseDamage * 0.15 * bonusLevels)
-                attack.damage += damageBonus
-            }
-            if (baseHeal > 0) {
-                // Increase healing by 15% per level
-                const healBonus = Math.floor(baseHeal * 0.15 * bonusLevels)
-                attack.heal += healBonus
-            }
-            if (baseSelfHeal > 0) {
-                // Increase self healing by 15% per level
-                const selfHealBonus = Math.floor(baseSelfHeal * 0.15 * bonusLevels)
-                attack.selfHeal += selfHealBonus
-            }
-            if (baseBarrier > 0) {
-                // Increase barrier by 15% per level
-                const barrierBonus = Math.floor(baseBarrier * 0.15 * bonusLevels)
-                attack.barrier += barrierBonus
-            }
-        })
+        console.log(`Turn ${AppState.turnCount} - Player's turn`)
     }
 
     /**
-     * Add additional items based on level
-     * @param {Player} character - The character to give items to
-     * @param {number} level - The player level
+     * End the battle with victory or defeat
+     * @param {boolean} playerWon - Whether the player won
      */
-    addLevelItems(character, level) {
-        const characterItems = this.createCharacterItems()
+    endBattle(playerWon) {
+        console.log('Ending battle:', playerWon ? 'Player Victory' : 'Player Defeat')
+        AppState.battleActive = false
 
-        // Add better potions at higher levels
-        if (level >= 3) {
-            character.items.push(characterItems.superHealthPotion)
+        if (playerWon) {
+            const boss = AppState.boss
+            const baseGold = boss?.goldReward || 50
+            const goldReward = Math.floor(baseGold)
+
+            AppState.addGold(goldReward)
+            if (boss?.id) {
+                AppState.recordDefeat(boss.id)
+            }
+
+            const oldLevel = AppState.playerLevel
+            AppState.levelUp()
+            const leveledUp = AppState.playerLevel > oldLevel
+
+            AppState.battleLog.push(`Victory! ${boss?.name || 'The enemy'} has been defeated!`)
+            AppState.battleLog.push(`You earned ${goldReward} gold!`)
+
+            if (leveledUp) {
+                AppState.battleLog.push(`Level Up! You are now level ${AppState.playerLevel}!`)
+                AppState.battleLog.push(`Your heroes have become stronger!`)
+            }
+
+            console.log(`Victory! Earned ${goldReward} gold, level ${AppState.playerLevel}`)
+        } else {
+            const consolationGold = Math.floor(10 + (AppState.playerLevel * 2))
+            AppState.addGold(consolationGold)
+
+            AppState.battleLog.push(`Defeat! ${AppState.player?.name || 'Your hero'} has fallen in battle...`)
+            AppState.battleLog.push(`You earned ${consolationGold} consolation gold for your effort.`)
+            console.log('Player defeated')
         }
 
-        if (level >= 5) {
-            character.items.push(characterItems.elixirOfPower)
-        }
-
-        if (level >= 7) {
-            character.items.push(characterItems.phoenixFeather)
-        }
-
-        if (level >= 10) {
-            character.items.push(characterItems.dragonScale)
-        }
-    }
-
-    createCharacterAttacks() {
-        return {
-            // Paladin attacks
-            holyStrike: new Attack({
-                id: 'holy-strike',
-                name: 'Holy Strike',
-                damage: 22,
-                type: 'magical',
-                cooldown: 0,
-                currentCooldown: 0,
-                accuracy: 95,
-                description: 'A righteous attack infused with divine power.'
-            }),
-
-            divineShield: new Attack({
-                id: 'divine-shield',
-                name: 'Divine Shield',
-                damage: 0,
-                type: 'support',
-                cooldown: 4,
-                currentCooldown: 0,
-                barrier: 40,
-                accuracy: 100,
-                description: 'Creates a protective barrier of holy light.'
-            }),
-
-            smite: new Attack({
-                id: 'smite',
-                name: 'Smite',
-                damage: 35,
-                type: 'magical',
-                cooldown: 3,
-                currentCooldown: 0,
-                accuracy: 90,
-                description: 'Calls down divine judgment upon the enemy.'
-            }),
-
-            layOnHands: new Attack({
-                id: 'lay-on-hands',
-                name: 'Lay on Hands',
-                damage: 0,
-                type: 'support',
-                cooldown: 5,
-                currentCooldown: 0,
-                heal: 45,
-                accuracy: 100,
-                description: 'Channels divine energy to heal wounds.'
-            }),
-
-            // Knight attacks
-            swordStrike: new Attack({
-                id: 'sword-strike',
-                name: 'Sword Strike',
-                damage: 25,
-                type: 'physical',
-                cooldown: 0,
-                currentCooldown: 0,
-                accuracy: 95,
-                description: 'A powerful sword attack.'
-            }),
-
-            shieldBash: new Attack({
-                id: 'shield-bash',
-                name: 'Shield Bash',
-                damage: 18,
-                type: 'physical',
-                cooldown: 2,
-                currentCooldown: 0,
-                stun: true,
-                accuracy: 85,
-                description: 'Strikes with the shield, potentially stunning the enemy.'
-            }),
-
-            battleCry: new Attack({
-                id: 'battle-cry',
-                name: 'Battle Cry',
-                damage: 15,
-                type: 'physical',
-                cooldown: 4,
-                currentCooldown: 0,
-                statusEffect: 'weaken',
-                statusEffectChance: 60,
-                accuracy: 100,
-                description: 'A intimidating war cry that may weaken enemies.'
-            }),
-
-            defensiveStance: new Attack({
-                id: 'defensive-stance',
-                name: 'Defensive Stance',
-                damage: 0,
-                type: 'support',
-                cooldown: 3,
-                currentCooldown: 0,
-                barrier: 30,
-                accuracy: 100,
-                description: 'Takes a defensive position, reducing incoming damage.'
-            }),
-
-            // Mage attacks
-            fireball: new Attack({
-                id: 'fireball',
-                name: 'Fireball',
-                damage: 30,
-                type: 'magical',
-                cooldown: 1,
-                currentCooldown: 0,
-                burn: true,
-                accuracy: 90,
-                description: 'Hurls a ball of fire that may burn the target.'
-            }),
-
-            iceShards: new Attack({
-                id: 'ice-shards',
-                name: 'Ice Shards',
-                damage: 24,
-                type: 'magical',
-                cooldown: 2,
-                currentCooldown: 0,
-                slow: true,
-                accuracy: 92,
-                description: 'Launches sharp ice projectiles that may slow the enemy.'
-            }),
-
-            lightningBolt: new Attack({
-                id: 'lightning-bolt',
-                name: 'Lightning Bolt',
-                damage: 38,
-                type: 'magical',
-                cooldown: 4,
-                currentCooldown: 0,
-                accuracy: 85,
-                description: 'Strikes with a powerful bolt of lightning.'
-            }),
-
-            magicalBarrier: new Attack({
-                id: 'magical-barrier',
-                name: 'Magical Barrier',
-                damage: 0,
-                type: 'support',
-                cooldown: 5,
-                currentCooldown: 0,
-                barrier: 50,
-                accuracy: 100,
-                description: 'Creates a protective magical barrier.'
-            }),
-
-            // Archer attacks
-            quickShot: new Attack({
-                id: 'quick-shot',
-                name: 'Quick Shot',
-                damage: 20,
-                type: 'physical',
-                cooldown: 0,
-                currentCooldown: 0,
-                accuracy: 98,
-                description: 'A fast, accurate arrow shot.'
-            }),
-
-            preciseAim: new Attack({
-                id: 'precise-aim',
-                name: 'Precise Aim',
-                damage: 28,
-                type: 'physical',
-                cooldown: 2,
-                currentCooldown: 0,
-                crit: true,
-                accuracy: 95,
-                description: 'A carefully aimed shot with high critical chance.'
-            }),
-
-            multiShot: new Attack({
-                id: 'multi-shot',
-                name: 'Multi Shot',
-                damage: 18,
-                type: 'physical',
-                cooldown: 3,
-                currentCooldown: 0,
-                multi: 3,
-                accuracy: 80,
-                description: 'Fires multiple arrows at once.'
-            }),
-
-            evasiveManeuvers: new Attack({
-                id: 'evasive-maneuvers',
-                name: 'Evasive Maneuvers',
-                damage: 12,
-                type: 'physical',
-                cooldown: 4,
-                currentCooldown: 0,
-                dodge: true,
-                accuracy: 100,
-                description: 'Performs evasive moves while counterattacking.'
-            })
-        }
-    }
-
-    createCharacterItems() {
-        return {
-            healthPotion: new Item({
-                id: 'health-potion',
-                name: 'Health Potion',
-                type: 'health',
-                value: 40,
-                description: 'Restores 40 health points.',
-                imgUrl: 'https://placehold.co/100x100?text=Health',
-                cost: 50
-            }),
-
-            holyWater: new Item({
-                id: 'holy-water',
-                name: 'Holy Water',
-                type: 'cleanse',
-                value: 0,
-                description: 'Removes all status effects.',
-                imgUrl: 'https://placehold.co/100x100?text=Holy',
-                cost: 75
-            }),
-
-            strengthPotion: new Item({
-                id: 'strength-potion',
-                name: 'Strength Potion',
-                type: 'attack',
-                value: 5,
-                description: 'Increases attack power by 5.',
-                imgUrl: 'https://placehold.co/100x100?text=Strength',
-                cost: 100
-            }),
-
-            manaPotion: new Item({
-                id: 'mana-potion',
-                name: 'Mana Potion',
-                type: 'health',
-                value: 30,
-                description: 'Restores 30 health and removes burn effects.',
-                imgUrl: 'https://placehold.co/100x100?text=Mana',
-                cost: 60
-            }),
-
-            arrowPoison: new Item({
-                id: 'arrow-poison',
-                name: 'Poison Arrows',
-                type: 'attack',
-                value: 3,
-                description: 'Increases attack by 3 and may poison enemies.',
-                imgUrl: 'https://placehold.co/100x100?text=Poison',
-                cost: 80
-            }),
-
-            // High-level items
-            superHealthPotion: new Item({
-                id: 'super-health-potion',
-                name: 'Super Health Potion',
-                type: 'health',
-                value: 80,
-                description: 'Restores 80 health points.',
-                imgUrl: 'https://placehold.co/100x100?text=Super+HP',
-                cost: 150
-            }),
-
-            elixirOfPower: new Item({
-                id: 'elixir-of-power',
-                name: 'Elixir of Power',
-                type: 'attack',
-                value: 10,
-                description: 'Increases attack power by 10.',
-                imgUrl: 'https://placehold.co/100x100?text=Power',
-                cost: 200
-            }),
-
-            phoenixFeather: new Item({
-                id: 'phoenix-feather',
-                name: 'Phoenix Feather',
-                type: 'health',
-                value: 120,
-                description: 'Restores 120 health and removes all debuffs.',
-                imgUrl: 'https://placehold.co/100x100?text=Phoenix',
-                cost: 300
-            }),
-
-            dragonScale: new Item({
-                id: 'dragon-scale',
-                name: 'Dragon Scale',
-                type: 'defense',
-                value: 8,
-                description: 'Increases defense by 8 for the entire battle.',
-                imgUrl: 'https://placehold.co/100x100?text=Scale',
-                cost: 400
-            })
-        }
-    }
-
-    getCharacterTemplate(characterId) {
-        return AppState.playerTemplates.find(char => char.id === characterId) || null
-    }
-
-    getAvailableCharacters() {
-        return AppState.playerTemplates.filter(char =>
-            AppState.unlockedCharacters.includes(char.id)
-        )
-    }
-
-    getAllCharacters() {
-        return AppState.playerTemplates
-    }
-
-    saveGameData() {
         AppState.saveGameData()
     }
 
-    loadGameData() {
-        AppState.loadGameData()
+    /**
+     * Reset the game to initial state
+     */
+    resetGame() {
+        console.log('Resetting game')
+        AppState.battleState.player = null
+        AppState.battleState.boss = null
+        AppState.battleState.battleActive = false
+        AppState.battleState.playerTurn = true
+        AppState.battleState.turnCount = 0
+        AppState.battleState.battleLog = []
+        AppState.battleState.playerBarrier = 0
+        AppState.battleState.playerDodging = false
+        AppState.battleState.playerBurning = false
+        AppState.battleState.playerSlowed = false
+        AppState.battleState.bossStunned = false
+        AppState.selectedHero = null
+        AppState.selectedEnemy = null
+        console.log('Game reset complete')
+    }
+
+    /**
+     * Get current battle status
+     */
+    getBattleStatus() {
+        return {
+            active: AppState.battleActive,
+            playerTurn: AppState.playerTurn,
+            turnCount: AppState.turnCount,
+            player: AppState.player,
+            boss: AppState.boss
+        }
+    }
+
+    // Legacy methods for compatibility
+    getAllCharacters() {
+        return [...AppState.paladins, ...AppState.archers]
+    }
+
+    getActiveCharacter() {
+        return AppState.activeCharacter
+    }
+
+    getCharacterById(characterId) {
+        let character = AppState.paladins.find(p => p.id === characterId)
+        if (!character) {
+            character = AppState.archers.find(a => a.id === characterId)
+        }
+        return character
+    }
+
+    clearActiveCharacter() {
+        AppState.paladins.forEach(p => p.isActive = false)
+        AppState.archers.forEach(a => a.isActive = false)
+        AppState.activeCharacter = null
     }
 }
 
-export const characterService = new CharacterService()
+// Export the service instance
+export const gameService = new GameService()
