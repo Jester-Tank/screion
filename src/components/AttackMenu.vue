@@ -2,14 +2,9 @@
   <div class="attack-menu">
     <h3 class="menu-title">{{ title }}</h3>
     <div class="attacks-grid">
-      <button 
-        v-for="attack in attacks" 
-        :key="attack.id" 
-        class="attack-button"
-        :class="[attack.type, { 'disabled': attack.currentCooldown > 0 }]"
-        :disabled="attack.currentCooldown > 0 || disabled"
-        @click="$emit('attack-selected', attack)"
-      >
+      <button v-for="attack in attacks" :key="attack.id" class="attack-button"
+        :class="[attack.type, { disabled: attack.currentCooldown > 0 }]"
+        :disabled="attack.currentCooldown > 0 || disabled" @click="$emit('attack-selected', attack)">
         <div class="attack-name">{{ attack.name }}</div>
         <div class="attack-details">
           <div class="attack-type">{{ formatType(attack.type) }}</div>
@@ -30,6 +25,7 @@
 
 <script>
 export default {
+  name: 'AttackMenu',
   props: {
     attacks: {
       type: Array,
@@ -44,21 +40,21 @@ export default {
       default: false
     }
   },
-  
+
   methods: {
     formatType(type) {
-      return type.charAt(0).toUpperCase() + type.slice(1);
+      return type.charAt(0).toUpperCase() + type.slice(1)
     },
-    
+
     formatEffect(effect) {
       const effects = {
         'burn': 'Burn 🔥',
         'poison': 'Poison ☠️',
         'stun': 'Stun ⚡',
         'weaken': 'Weaken 💔'
-      };
-      
-      return effects[effect] || effect;
+      }
+
+      return effects[effect] || effect
     }
   }
 }

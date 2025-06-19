@@ -1,10 +1,8 @@
 <template>
   <div class="battle-page container-fluid">
     <div class="row h-100">
-      <!-- Battle Arena -->
       <div class="col-12 col-md-8">
         <div class="battle-arena">
-          <!-- Boss Display -->
           <div class="boss-container" v-if="boss">
             <h2>{{ boss.name }}</h2>
             <div class="health-bar">
@@ -21,7 +19,6 @@
             </div>
           </div>
 
-          <!-- Player Display -->
           <div class="player-container" v-if="player">
             <h2>{{ player.name }}</h2>
             <div class="health-bar">
@@ -38,7 +35,6 @@
             </div>
           </div>
 
-          <!-- Battle UI Overlay -->
           <div class="battle-ui-overlay">
             <div class="turn-indicator" v-if="battleActive">
               <span v-if="playerTurn">Your Turn</span>
@@ -52,20 +48,13 @@
         </div>
       </div>
 
-      <!-- Battle Controls -->
       <div class="col-12 col-md-4">
         <div class="battle-controls">
-          <!-- Attack Menu -->
           <div class="attack-menu" v-if="battleActive && playerTurn">
             <h3>Attacks</h3>
             <div class="attack-list">
-              <button 
-                v-for="attack in availableAttacks" 
-                :key="attack.id" 
-                class="attack-button" 
-                :disabled="attack.currentCooldown > 0" 
-                @click="useAttack(attack)"
-              >
+              <button v-for="attack in availableAttacks" :key="attack.id" class="attack-button"
+                :disabled="attack.currentCooldown > 0" @click="useAttack(attack)">
                 {{ attack.name }}
                 <span v-if="attack.currentCooldown > 0" class="cooldown">
                   ({{ attack.currentCooldown }})
@@ -74,22 +63,15 @@
             </div>
           </div>
 
-          <!-- Items Menu -->
           <div class="items-menu" v-if="battleActive && playerTurn">
             <h3>Items</h3>
             <div class="item-list">
-              <button 
-                v-for="item in inventory" 
-                :key="item.id" 
-                class="item-button" 
-                @click="useItem(item)"
-              >
+              <button v-for="item in inventory" :key="item.id" class="item-button" @click="useItem(item)">
                 {{ item.name }}
               </button>
             </div>
           </div>
 
-          <!-- Battle Log -->
           <div class="battle-log">
             <h3>Battle Log</h3>
             <div class="log-container">
@@ -112,29 +94,26 @@ import { playerService } from '../services/PlayerService'
 import { router } from '../router'
 
 export default {
+  name: 'BattlePage',
   setup() {
-    // Mounted lifecycle hook
     onMounted(() => {
-      // Check if battle is initialized
       if (!AppState.player || !AppState.boss) {
         console.warn('Battle page loaded without initialized battle state, redirecting to home')
         router.push('/')
         return
       }
-      
+
       console.log('Battle page mounted with state:', {
         player: AppState.player,
         boss: AppState.boss,
         battleActive: AppState.battleActive
       })
     })
-    
-    // Watch for changes in battle state
+
     watch(() => AppState.battleActive, (isActive) => {
       console.log('Battle state changed:', isActive)
     })
-    
-    // Computed properties
+
     const player = computed(() => AppState.player)
     const boss = computed(() => AppState.boss)
     const battleActive = computed(() => AppState.battleActive)
@@ -142,42 +121,40 @@ export default {
     const availableAttacks = computed(() => AppState.player?.attacks.filter(a => a.currentCooldown === 0) || [])
     const inventory = computed(() => AppState.player?.items || [])
     const battleLog = computed(() => AppState.battleLog)
-    
+
     const playerHealthPercentage = computed(() => {
       if (!player.value) return 0
       return (player.value.currentHealth / player.value.maxHealth) * 100
     })
-    
+
     const bossHealthPercentage = computed(() => {
       if (!boss.value) return 0
       return (boss.value.currentHealth / boss.value.maxHealth) * 100
     })
-    
+
     const battleOutcome = computed(() => {
       if (battleActive.value) return ''
       if (player.value?.currentHealth <= 0) return 'Defeat!'
       if (boss.value?.currentHealth <= 0) return 'Victory!'
       return 'Battle Ended'
     })
-    
-    // Methods
+
     function useAttack(attack) {
       console.log('Using attack:', attack)
       playerService.usePlayerAttack(attack)
     }
-    
+
     function useItem(item) {
       console.log('Using item:', item)
       playerService.usePlayerItem(item)
     }
-    
+
     function resetGame() {
       console.log('Resetting game')
       gameService.resetGame()
-      // Redirect to home page
       router.push('/')
     }
-    
+
     return {
       player,
       boss,
@@ -305,7 +282,7 @@ export default {
   background-color: rgba(0, 0, 0, 0.8);
   padding: 2rem;
   border-radius: 10px;
-  
+
   h2 {
     font-size: 3rem;
     margin-bottom: 1rem;
@@ -343,11 +320,11 @@ export default {
   text-align: center;
   background-color: #2196F3;
   color: #fff;
-  
+
   &:hover {
     background-color: #1976D2;
   }
-  
+
   &:disabled {
     background-color: #607D8B;
     cursor: not-allowed;
@@ -384,9 +361,11 @@ export default {
   0% {
     opacity: 0.5;
   }
+
   50% {
     opacity: 1;
   }
+
   100% {
     opacity: 0.5;
   }

@@ -1,40 +1,41 @@
-// src/router.js
 import { createRouter, createWebHashHistory } from 'vue-router'
-
-function loadPage(page) {
-  return () => import(`./pages/${page}.vue`)
-}
+import HomePage from './pages/HomePage.vue'
+import AboutPage from './pages/AboutPage.vue'
+import CharacterPage from './pages/CharacterPage.vue'
+import BossSelectionPage from './pages/BossSelectionPage.vue'
+import BattlePage from './pages/BattlePage.vue'
+import AccountPage from './pages/AccountPage.vue'
 
 const routes = [
   {
     path: '/',
     name: 'Home',
-    component: loadPage('HomePage')
+    component: HomePage
   },
   {
     path: '/about',
     name: 'About',
-    component: loadPage('AboutPage')
+    component: AboutPage
   },
   {
     path: '/characters',
     name: 'Characters',
-    component: loadPage('CharacterPage')
+    component: CharacterPage
   },
   {
     path: '/bosses',
     name: 'BossSelection',
-    component: loadPage('BossSelectionPage')
+    component: BossSelectionPage
   },
   {
     path: '/battle',
     name: 'Battle',
-    component: loadPage('BattlePage')
+    component: BattlePage
   },
   {
     path: '/account',
     name: 'Account',
-    component: loadPage('AccountPage')
+    component: AccountPage
   }
 ]
 

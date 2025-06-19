@@ -35,7 +35,8 @@ class ArcherService {
         const archer = this.getArcherById(archerId)
         if (archer && archer.experience >= archer.level * 100) {
             archer.level++
-            archer.health += 8
+            archer.maxHealth += 8  // Fixed: was archer.health
+            archer.currentHealth = archer.maxHealth  // Added: restore health on level up
             archer.attack += 6
             archer.defense += 2
             archer.range += 0.5  // Increase range slightly with level
