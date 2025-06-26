@@ -137,13 +137,16 @@ class GameService {
             const baseGold = boss?.goldReward || 50
             const goldReward = Math.floor(baseGold)
 
+            // Award XP to the actual character using the enhanced experience system
             try {
                 const experienceModule = await import('./ExperienceService.js')
                 const experienceService = experienceModule.experienceService
 
                 if (experienceService && player) {
+                    // Calculate XP based on boss difficulty
                     const xpReward = experienceService.calculateBattleXP(boss, player)
 
+                    // Find the actual character in AppState and award XP
                     let actualCharacter = null
                     if (player.characterClass === 'paladin') {
                         actualCharacter = AppState.paladins.find(p => p.name === player.name)
@@ -155,13 +158,31 @@ class GameService {
                         const xpResult = experienceService.awardXP(actualCharacter, xpReward, 'boss_battle')
 
                         AppState.battleLog.push(`${actualCharacter.name} gained ${xpReward} XP!`)
+
                         if (xpResult.leveledUp) {
-                            AppState.battleLog.push(`🎉 LEVEL UP! ${actualCharacter.name} reached Level ${xpResult.newLevel}!`)
+                            if (xpResult.levelsGained > 1) {
+                                AppState.battleLog.push(`🎉 MULTIPLE LEVEL UPS! ${actualCharacter.name} gained ${xpResult.levelsGained} levels and reached Level ${xpResult.newLevel}!`)
+                            } else {
+                                AppState.battleLog.push(`🎉 LEVEL UP! ${actualCharacter.name} reached Level ${xpResult.newLevel}!`)
+                            }
+                            AppState.battleLog.push(`💪 ${actualCharacter.name} has become stronger!`)
+                        }
+
+                        if (xpResult.maxLevel) {
+                            AppState.battleLog.push(`⭐ ${actualCharacter.name} has reached the maximum level of ${experienceService.getMaxLevel()}!`)
+                        }
+
+                        // Show XP progress towards next level (if not max level)
+                        if (!xpResult.maxLevel) {
+                            const xpNeeded = experienceService.getXPForNextLevel(actualCharacter)
+                            AppState.battleLog.push(`📊 ${xpNeeded} XP needed for Level ${actualCharacter.level + 1}`)
                         }
                     }
                 }
             } catch (error) {
                 console.warn('ExperienceService not available:', error)
+                // Fallback XP system
+                AppState.battleLog.push(`Experience gained from victory!`)
             }
 
             AppState.addGold(goldReward)
@@ -173,20 +194,47 @@ class GameService {
             AppState.levelUp()
             const leveledUp = AppState.playerLevel > oldLevel
 
-            AppState.battleLog.push(`Victory! ${boss?.name || 'The enemy'} has been defeated!`)
-            AppState.battleLog.push(`You earned ${goldReward} gold!`)
+            AppState.battleLog.push(`🏆 Victory! ${boss?.name || 'The enemy'} has been defeated!`)
+            AppState.battleLog.push(`💰 You earned ${goldReward} gold!`)
 
             if (leveledUp) {
-                AppState.battleLog.push(`Player Level Up! You are now level ${AppState.playerLevel}!`)
+                AppState.battleLog.push(`🎖️ Player Level Up! You are now level ${AppState.playerLevel}!`)
+                AppState.battleLog.push(`🔓 New content may be unlocked!`)
             }
 
             console.log(`Victory! Earned ${goldReward} gold`)
         } else {
             const consolationGold = Math.floor(10 + (AppState.playerLevel * 2))
+            const consolationXP = 10 // Small XP even for losing
+
             AppState.addGold(consolationGold)
 
-            AppState.battleLog.push(`Defeat! ${AppState.player?.name || 'Your hero'} has fallen in battle...`)
-            AppState.battleLog.push(`You earned ${consolationGold} consolation gold for your effort.`)
+            // Award small XP even for losing (encouragement)
+            try {
+                const experienceModule = await import('./ExperienceService.js')
+                const experienceService = experienceModule.experienceService
+                const player = AppState.player
+
+                if (experienceService && player) {
+                    let actualCharacter = null
+                    if (player.characterClass === 'paladin') {
+                        actualCharacter = AppState.paladins.find(p => p.name === player.name)
+                    } else if (player.characterClass === 'archer') {
+                        actualCharacter = AppState.archers.find(a => a.name === player.name)
+                    }
+
+                    if (actualCharacter && !experienceService.isMaxLevel(actualCharacter)) {
+                        experienceService.awardXP(actualCharacter, consolationXP, 'defeat_experience')
+                        AppState.battleLog.push(`📚 ${actualCharacter.name} learned from the experience and gained ${consolationXP} XP!`)
+                    }
+                }
+            } catch (error) {
+                console.warn('ExperienceService not available for defeat XP:', error)
+            }
+
+            AppState.battleLog.push(`💥 Defeat! ${AppState.player?.name || 'Your hero'} has fallen in battle...`)
+            AppState.battleLog.push(`💰 You earned ${consolationGold} consolation gold for your effort.`)
+            AppState.battleLog.push(`💡 Don't give up! Train and try again!`)
             console.log('Player defeated')
         }
 

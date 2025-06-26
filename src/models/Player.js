@@ -1,4 +1,5 @@
 import { Character } from "./Character.js"
+import { experienceService } from "../services/ExperienceService.js"
 
 export class Player extends Character {
     constructor(data) {
@@ -21,13 +22,7 @@ export class Player extends Character {
      * @returns {number} Total XP needed for that level
      */
     getTotalXPForLevel(level = this.level) {
-        if (level <= 1) return 0
-        // XP required: Level 1->2 = 100, Level 2->3 = 200, Level 3->4 = 300, etc.
-        let totalXP = 0
-        for (let i = 1; i < level; i++) {
-            totalXP += i * 100
-        }
-        return totalXP
+        return experienceService.getXPRequiredForLevel(level)
     }
 
     /**
@@ -36,7 +31,7 @@ export class Player extends Character {
      * @returns {number} XP needed for next level
      */
     calculateXPNeeded(fromLevel = this.level) {
-        return fromLevel * 100
+        return experienceService.getXPForNextLevel(this)
     }
 
     /**
@@ -44,13 +39,7 @@ export class Player extends Character {
      * @returns {number} Percentage (0-100)
      */
     getXPProgress() {
-        const totalForCurrentLevel = this.getTotalXPForLevel(this.level)
-        const totalForNextLevel = this.getTotalXPForLevel(this.level + 1)
-        const currentLevelXP = this.experience - totalForCurrentLevel
-        const neededForNext = totalForNextLevel - totalForCurrentLevel
-
-        if (neededForNext <= 0) return 100
-        return Math.min(100, Math.max(0, (currentLevelXP / neededForNext) * 100))
+        return experienceService.getXPProgress(this)
     }
 
     /**
@@ -58,8 +47,7 @@ export class Player extends Character {
      * @returns {boolean} True if can level up
      */
     canLevelUp() {
-        const neededForNext = this.getTotalXPForLevel(this.level + 1)
-        return this.experience >= neededForNext
+        return experienceService.canLevelUp(this)
     }
 
     /**
@@ -67,8 +55,7 @@ export class Player extends Character {
      * @returns {number} Current XP in this level
      */
     getCurrentLevelXP() {
-        const totalForCurrentLevel = this.getTotalXPForLevel(this.level)
-        return Math.max(0, this.experience - totalForCurrentLevel)
+        return experienceService.getCurrentLevelXP(this)
     }
 
     /**
@@ -76,7 +63,22 @@ export class Player extends Character {
      * @returns {number} XP needed for next level
      */
     getXPNeededForNext() {
-        const totalForNext = this.getTotalXPForLevel(this.level + 1)
-        return Math.max(0, totalForNext - this.experience)
+        return experienceService.getXPForNextLevel(this)
+    }
+
+    /**
+     * Check if at max level
+     * @returns {boolean} True if at max level
+     */
+    isMaxLevel() {
+        return experienceService.isMaxLevel(this)
+    }
+
+    /**
+     * Get max level
+     * @returns {number} Maximum possible level
+     */
+    getMaxLevel() {
+        return experienceService.getMaxLevel()
     }
 }
