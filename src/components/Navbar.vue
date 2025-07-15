@@ -15,15 +15,12 @@
           <li class="nav-item">
             <router-link class="nav-link" to="/">Home</router-link>
           </li>
-
           <li class="nav-item">
             <router-link class="nav-link" to="/characters">Characters</router-link>
           </li>
-
           <li class="nav-item">
             <router-link class="nav-link" to="/bosses">Boss Battles</router-link>
           </li>
-
           <li class="nav-item">
             <router-link class="nav-link" to="/about">About</router-link>
           </li>
@@ -48,11 +45,10 @@
             <span>{{ activeCharacter.name }}</span>
           </div>
 
-          <!-- Selected Hero Display -->
-          <div v-if="selectedHero && !activeCharacter" class="text-light me-3 d-flex align-items-center">
-            <i class="mdi mdi-shield-account me-1"></i>
-            <span>{{ getSelectedHeroName() }}</span>
-          </div>
+          <!-- Settings Button -->
+          <button class="btn btn-outline-light me-2" @click="openSettings" title="Toggle Auto-Save">
+            <i class="mdi mdi-cog"></i>
+          </button>
 
           <router-link class="btn btn-outline-light" to="/account">
             <i class="mdi mdi-account"></i> Account
@@ -68,24 +64,26 @@ import { computed } from 'vue'
 import { AppState } from '../AppState.js'
 
 export default {
+  name: 'NavbarComponent',
   setup() {
     const activeCharacter = computed(() => AppState.activeCharacter)
-    const selectedHero = computed(() => AppState.selectedHero)
     const gold = computed(() => AppState.gold)
     const playerLevel = computed(() => AppState.playerLevel)
 
-    function getSelectedHeroName() {
-      if (!selectedHero.value) return ''
-      const hero = AppState.playerTemplates.find(h => h.id === selectedHero.value)
-      return hero ? hero.name : ''
+    function openSettings() {
+      // Simple toggle for auto-save
+      const currentAutoSave = AppState.gameSettings.autoSave
+      AppState.gameSettings.autoSave = !currentAutoSave
+      AppState.saveGameData()
+
+      alert(`⚙️ Auto-save ${!currentAutoSave ? 'enabled' : 'disabled'}!`)
     }
 
     return {
       activeCharacter,
-      selectedHero,
       gold,
       playerLevel,
-      getSelectedHeroName
+      openSettings
     }
   }
 }
@@ -130,6 +128,32 @@ export default {
 
   i {
     font-size: 1.1rem;
+  }
+}
+
+.btn-outline-light {
+  transition: all 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+
+  &:hover {
+    background-color: #ffc107;
+    border-color: #ffc107;
+    color: #000;
+  }
+
+  i {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .text-light {
+    font-size: 0.8rem;
+    margin-right: 0.5rem !important;
+
+    span {
+      display: none;
+    }
   }
 }
 </style>
