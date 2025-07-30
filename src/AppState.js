@@ -1,17 +1,24 @@
+// src/AppState.js
 import { reactive } from 'vue'
 import { Paladin } from './models/Paladin.js'
 import { Archer } from './models/Archer.js'
 
-// NOTE AppState is a reactive object to contain app level data
-export const AppState = reactive({
-  // /** @type {import('@bcwdev/auth0provider-client').User} */
-  // user: {},
-  // /** @type {import('@bcwdev/auth0provider-client').Identity} */
-  // identity: {},
-  // /** @type {import('./models/Account.js').Account} */
-  // account: '{}',
+// Modular state structure for better organization
+const createBattleState = () => ({
+  player: null,
+  boss: null,
+  battleActive: false,
+  turnCount: 0,
+  playerTurn: true,
+  battleLog: [],
+  playerBarrier: 0,
+  playerDodging: false,
+  playerBurning: false,
+  playerSlowed: false,
+  bossStunned: false
+})
 
-  /** @type {Paladin[]} */
+const createCharacterState = () => ({
   paladins: [
     new Paladin({
       name: 'Sir Stellaris',
@@ -28,8 +35,6 @@ export const AppState = reactive({
       inventory: ['Golden Sword of Light', 'Star Shield', 'Holy Water', 'Divine Charm']
     })
   ],
-
-  /** @type {Archer[]} */
   archers: [
     new Archer({
       name: 'Sylvia',
@@ -46,170 +51,66 @@ export const AppState = reactive({
       inventory: ['Wooden Bow', 'Quiver of Arrows', 'Hunting Knife']
     })
   ],
-
-  /** @type {Paladin|Archer|null} */
   activeCharacter: null,
-
-  /** @type {Object[]} */
-  gameItems: [
-    {
-      id: 'health-potion',
-      name: 'Health Potion',
-      type: 'consumable',
-      effect: 'heal',
-      value: 30,
-      description: 'Restores 30 health points when consumed.',
-      rarity: 'common'
-    },
-    {
-      id: 'holy-water',
-      name: 'Holy Water',
-      type: 'consumable',
-      effect: 'restore-holy-power',
-      value: 20,
-      description: 'Restores 20 holy power to a paladin.',
-      rarity: 'uncommon'
-    },
-    {
-      id: 'blessed-arrow',
-      name: 'Blessed Arrow',
-      type: 'consumable',
-      effect: 'increase-attack',
-      value: 10,
-      description: 'Increases an archer\'s attack by 10 for the next battle.',
-      rarity: 'uncommon'
-    }
-  ],
-
-  /** @type {Object} */
-  gameProgress: {
-    currentQuest: null,
-    completedQuests: [],
-    currentLocation: 'town',
-    visitedLocations: ['town'],
-    gameDay: 1
-  },
-
-  // ========================================
-  // CHARACTER SYSTEM STATE
-  // ========================================
-
-  // Character templates for battle system
-  /** @type {import('./models/Player.js').Player[]} */
   playerTemplates: [],
-
-  // Game progression data
-  /** @type {number} */
-  gold: 100,
-
-  /** @type {number} */
-  playerLevel: 1,
-
-  /** @type {number} */
-  highestLevel: 1,
-
-  /** @type {number} */
-  totalGoldEarned: 0,
-
-  /** @type {number} */
-  totalBattlesWon: 0,
-
-  /** @type {number} */
-  totalBattlesLost: 0,
-
-  /** @type {number} */
-  totalXPEarned: 0,
-
-  // Character unlocking system
-  /** @type {string[]} */
   unlockedCharacters: ['paladin', 'knight'],
-
-  /** @type {Object} */
   characterCosts: {
     knight: 0,
     paladin: 0,
     mage: 200,
     archer: 150
   },
+  selectedHero: null
+})
 
-  // Hero selection for battle system
-  /** @type {string|null} */
-  selectedHero: null,
+const createGameProgressState = () => ({
+  gold: 100,
+  playerLevel: 1,
+  highestLevel: 1,
+  totalGoldEarned: 0,
+  totalBattlesWon: 0,
+  totalBattlesLost: 0,
+  totalXPEarned: 0,
+  currentQuest: null,
+  completedQuests: [],
+  currentLocation: 'town',
+  visitedLocations: ['town'],
+  gameDay: 1
+})
 
-  // Enemy system data  
-  /** @type {import('./models/Boss.js').Boss[]} */
+const createEnemyState = () => ({
   bossTemplates: [],
-
-  /** @type {string[]} */
-  unlockedEnemies: ['giant_rat', 'forest_spider'], // Start with easiest bosses
-
-  /** @type {Object} */
+  unlockedEnemies: ['giant_rat', 'forest_spider'],
   enemyCosts: {
-    // Easy bosses (Level 1-3)
-    giant_rat: 0,           // Free starter boss
-    forest_spider: 25,      // Unlock after first victory
-    bandit_leader: 50,      // 
-
-    // Medium bosses (Level 4-6)
-    orc_warrior: 100,       // Requires some progression
-    ice_elemental: 150,     // 
-    troll_shaman: 200,      // 
-
-    // Hard bosses (Level 7-10)
-    dragon: 300,            // Classic dragon
-    necromancer: 400,       // Dark necromancer
-    demon_lord: 500,        // Lesser demon lord
-
-    // Extreme bosses (Level 11-15)
-    golem: 700,             // Stone titan golem
-    shadow_lord: 900,       // Shadow lord
-    lich_king: 1200,        // The lich king
-
-    // Legendary bosses (Level 16-20)
-    dragon_king: 1500,      // Dragon king
-    void_emperor: 2000      // Ultimate boss
+    giant_rat: 0,
+    forest_spider: 25,
+    bandit_leader: 50,
+    orc_warrior: 100,
+    ice_elemental: 150,
+    troll_shaman: 200,
+    dragon: 300,
+    necromancer: 400,
+    demon_lord: 500,
+    golem: 700,
+    shadow_lord: 900,
+    lich_king: 1200,
+    dragon_king: 1500,
+    void_emperor: 2000
   },
-
-  /** @type {string[]} */
   defeatedBosses: [],
+  bossDefeatedCount: {},
+  selectedEnemy: null
+})
 
-  /** @type {Object} */
-  bossDefeatedCount: {}, // Track how many times each boss has been defeated
-
-  /** @type {string|null} */
-  selectedEnemy: null,
-
-  // Battle state
-  /** @type {Object} */
-  battleState: {
-    /** @type {import('./models/Player.js').Player|null} */
-    player: null,
-    /** @type {import('./models/Boss.js').Boss|null} */
-    boss: null,
-    battleActive: false,
-    turnCount: 0,
-    playerTurn: true,
-    battleLog: [],
-    playerBarrier: 0,
-    playerDodging: false,
-    playerBurning: false,
-    playerSlowed: false,
-    bossStunned: false
-  },
-
-  // Game settings and preferences
-  /** @type {Object} */
+const createGameState = () => ({
   gameSettings: {
     soundEnabled: true,
     musicEnabled: true,
     animationsEnabled: true,
     autoSave: true,
-    difficulty: 'normal', // easy, normal, hard
+    difficulty: 'normal',
     showTutorials: true
   },
-
-  // Achievement system
-  /** @type {Object[]} */
   achievements: [
     {
       id: 'first_victory',
@@ -247,9 +148,6 @@ export const AppState = reactive({
       category: 'combat'
     }
   ],
-
-  // Statistics tracking
-  /** @type {Object} */
   gameStats: {
     totalPlayTime: 0,
     sessionsPlayed: 0,
@@ -260,615 +158,861 @@ export const AppState = reactive({
     longestWinStreak: 0,
     currentWinStreak: 0
   },
+  gameItems: [
+    {
+      id: 'health-potion',
+      name: 'Health Potion',
+      type: 'consumable',
+      effect: 'heal',
+      value: 30,
+      description: 'Restores 30 health points when consumed.',
+      rarity: 'common'
+    },
+    {
+      id: 'holy-water',
+      name: 'Holy Water',
+      type: 'consumable',
+      effect: 'restore-holy-power',
+      value: 20,
+      description: 'Restores 20 holy power to a paladin.',
+      rarity: 'uncommon'
+    },
+    {
+      id: 'blessed-arrow',
+      name: 'Blessed Arrow',
+      type: 'consumable',
+      effect: 'increase-attack',
+      value: 10,
+      description: 'Increases an archer\'s attack by 10 for the next battle.',
+      rarity: 'uncommon'
+    }
+  ]
+})
+
+// NOTE AppState is a reactive object to contain app level data
+export const AppState = reactive({
+  // Modular state organization
+  ...createBattleState(),
+  ...createCharacterState(),
+  ...createGameProgressState(),
+  ...createEnemyState(),
+  ...createGameState(),
+
+  // Error state management
+  errorState: {
+    lastError: null,
+    errorCount: 0,
+    criticalErrors: []
+  },
 
   // ========================================
-  // STATE MANAGEMENT METHODS
+  // STATE MANAGEMENT METHODS WITH ERROR HANDLING
   // ========================================
 
-  // Character Management
+  // Character Management with error handling
   setPlayerTemplates(templates) {
-    this.playerTemplates = templates
+    try {
+      if (!Array.isArray(templates)) {
+        throw new Error('Templates must be an array')
+      }
+      this.playerTemplates = templates
+      return true
+    } catch (error) {
+      this.handleError('setPlayerTemplates', error)
+      return false
+    }
   },
 
   selectHero(id) {
-    console.log('Selecting hero:', id)
-    this.selectedHero = id
-    return this.selectedHero
+    try {
+      if (!id) {
+        throw new Error('Hero ID is required')
+      }
+      console.log('Selecting hero:', id)
+      this.selectedHero = id
+      return this.selectedHero
+    } catch (error) {
+      this.handleError('selectHero', error)
+      return null
+    }
   },
 
   unlockCharacter(id) {
-    const cost = this.characterCosts[id]
-    if (!cost && cost !== 0) {
-      console.error(`Character ${id} not found in characterCosts`)
+    try {
+      const cost = this.characterCosts[id]
+      if (cost === undefined) {
+        throw new Error(`Character ${id} not found in characterCosts`)
+      }
+
+      if (this.gold >= cost) {
+        this.gold -= cost
+        if (!this.unlockedCharacters.includes(id)) {
+          this.unlockedCharacters.push(id)
+        }
+        this.saveGameData()
+        return true
+      }
+      return false
+    } catch (error) {
+      this.handleError('unlockCharacter', error)
       return false
     }
-
-    if (this.gold >= cost) {
-      this.gold -= cost
-      if (!this.unlockedCharacters.includes(id)) {
-        this.unlockedCharacters.push(id)
-      }
-      this.saveGameData()
-      return true
-    }
-    return false
   },
 
-  // Gold Management
+  // Gold Management with validation
   addGold(amount) {
-    this.gold += amount
-    this.totalGoldEarned += amount
-    this.checkAchievements()
-    this.saveGameData()
-    return this.gold
+    try {
+      if (typeof amount !== 'number' || amount < 0) {
+        throw new Error('Gold amount must be a positive number')
+      }
+      this.gold += amount
+      this.totalGoldEarned += amount
+      this.checkAchievements()
+      this.saveGameData()
+      return this.gold
+    } catch (error) {
+      this.handleError('addGold', error)
+      return this.gold
+    }
   },
 
   spendGold(amount) {
-    if (this.gold >= amount) {
-      this.gold -= amount
-      this.saveGameData()
-      return true
+    try {
+      if (typeof amount !== 'number' || amount < 0) {
+        throw new Error('Gold amount must be a positive number')
+      }
+      if (this.gold >= amount) {
+        this.gold -= amount
+        this.saveGameData()
+        return true
+      }
+      return false
+    } catch (error) {
+      this.handleError('spendGold', error)
+      return false
     }
-    return false
   },
 
-  // Level Management
+  // Level Management with bounds checking
   levelUp() {
-    this.playerLevel++
-    if (this.playerLevel > this.highestLevel) {
-      this.highestLevel = this.playerLevel
+    try {
+      const maxLevel = 20 // Define max level constant
+      if (this.playerLevel >= maxLevel) {
+        console.warn(`Player is already at maximum level ${maxLevel}`)
+        return this.playerLevel
+      }
+      
+      this.playerLevel++
+      if (this.playerLevel > this.highestLevel) {
+        this.highestLevel = this.playerLevel
+      }
+      this.checkAchievements()
+      this.processAutoUnlocks()
+      this.saveGameData()
+      return this.playerLevel
+    } catch (error) {
+      this.handleError('levelUp', error)
+      return this.playerLevel
     }
-    this.checkAchievements()
-    this.processAutoUnlocks()
-    this.saveGameData()
-    return this.playerLevel
   },
 
-  // Enemy Management
+  // Enemy Management with validation
   selectEnemy(id) {
-    console.log('Selecting enemy:', id)
-    this.selectedEnemy = id
-    return this.selectedEnemy
+    try {
+      if (!id) {
+        throw new Error('Enemy ID is required')
+      }
+      console.log('Selecting enemy:', id)
+      this.selectedEnemy = id
+      return this.selectedEnemy
+    } catch (error) {
+      this.handleError('selectEnemy', error)
+      return null
+    }
   },
 
   unlockEnemy(id) {
-    const cost = this.enemyCosts[id]
-    if (this.gold >= cost) {
-      this.gold -= cost
-      if (!this.unlockedEnemies.includes(id)) {
-        this.unlockedEnemies.push(id)
+    try {
+      const cost = this.enemyCosts[id]
+      if (cost === undefined) {
+        throw new Error(`Enemy ${id} not found in enemyCosts`)
       }
-      this.saveGameData()
-      return true
+      
+      if (this.gold >= cost) {
+        this.gold -= cost
+        if (!this.unlockedEnemies.includes(id)) {
+          this.unlockedEnemies.push(id)
+        }
+        this.saveGameData()
+        return true
+      }
+      return false
+    } catch (error) {
+      this.handleError('unlockEnemy', error)
+      return false
     }
-    return false
   },
 
   recordDefeat(enemyId) {
-    if (!this.defeatedBosses.includes(enemyId)) {
-      this.defeatedBosses.push(enemyId)
-    }
+    try {
+      if (!enemyId) {
+        throw new Error('Enemy ID is required')
+      }
+      
+      if (!this.defeatedBosses.includes(enemyId)) {
+        this.defeatedBosses.push(enemyId)
+      }
 
-    // Track defeat count
-    if (!this.bossDefeatedCount[enemyId]) {
-      this.bossDefeatedCount[enemyId] = 0
-    }
-    this.bossDefeatedCount[enemyId]++
+      // Track defeat count
+      if (!this.bossDefeatedCount[enemyId]) {
+        this.bossDefeatedCount[enemyId] = 0
+      }
+      this.bossDefeatedCount[enemyId]++
 
-    this.totalBattlesWon++
-    this.gameStats.currentWinStreak++
-    if (this.gameStats.currentWinStreak > this.gameStats.longestWinStreak) {
-      this.gameStats.longestWinStreak = this.gameStats.currentWinStreak
-    }
+      this.totalBattlesWon++
+      this.gameStats.currentWinStreak++
+      if (this.gameStats.currentWinStreak > this.gameStats.longestWinStreak) {
+        this.gameStats.longestWinStreak = this.gameStats.currentWinStreak
+      }
 
-    this.processAutoUnlocks()
-    this.checkAchievements()
-    this.saveGameData()
+      this.processAutoUnlocks()
+      this.checkAchievements()
+      this.saveGameData()
+    } catch (error) {
+      this.handleError('recordDefeat', error)
+    }
   },
 
   recordLoss() {
-    this.totalBattlesLost++
-    this.gameStats.currentWinStreak = 0
-    this.saveGameData()
-  },
-
-  // Boss system methods
-  /**
-   * Get bosses by difficulty tier
-   * @param {string} tier - The difficulty tier
-   * @returns {Boss[]} Bosses in that tier
-   */
-  getBossesByTier(tier) {
-    return this.bossTemplates.filter(boss => boss.tier === tier)
-  },
-
-  /**
-   * Check if a boss should be auto-unlocked based on player progress
-   * @param {string} bossId - The boss ID to check
-   * @returns {boolean} True if should be auto-unlocked
-   */
-  shouldAutoUnlock(bossId) {
-    const autoUnlockRules = {
-      'forest_spider': () => this.defeatedBosses.includes('giant_rat'),
-      'bandit_leader': () => this.defeatedBosses.includes('forest_spider'),
-      'orc_warrior': () => this.playerLevel >= 4 && this.defeatedBosses.length >= 2,
-      'ice_elemental': () => this.playerLevel >= 5 && this.defeatedBosses.includes('orc_warrior'),
-      'troll_shaman': () => this.playerLevel >= 6 && this.defeatedBosses.includes('ice_elemental'),
-      'dragon': () => this.playerLevel >= 7 && this.defeatedBosses.includes('troll_shaman'),
-      'necromancer': () => this.playerLevel >= 8 && this.defeatedBosses.includes('dragon'),
-      'demon_lord': () => this.playerLevel >= 9 && this.defeatedBosses.includes('necromancer'),
-      'golem': () => this.playerLevel >= 11 && this.defeatedBosses.includes('demon_lord'),
-      'shadow_lord': () => this.playerLevel >= 12 && this.defeatedBosses.includes('golem'),
-      'lich_king': () => this.playerLevel >= 14 && this.defeatedBosses.includes('shadow_lord'),
-      'dragon_king': () => this.playerLevel >= 16 && this.defeatedBosses.includes('lich_king'),
-      'void_emperor': () => this.playerLevel >= 18 && this.defeatedBosses.includes('dragon_king')
-    }
-
-    const rule = autoUnlockRules[bossId]
-    return rule ? rule() : false
-  },
-
-  /**
-   * Process auto-unlocks for bosses
-   */
-  processAutoUnlocks() {
-    const allBossIds = [
-      'giant_rat', 'forest_spider', 'bandit_leader', 'orc_warrior', 'ice_elemental',
-      'troll_shaman', 'dragon', 'necromancer', 'demon_lord', 'golem', 'shadow_lord',
-      'lich_king', 'dragon_king', 'void_emperor'
-    ]
-
-    let newUnlocks = []
-
-    allBossIds.forEach(bossId => {
-      if (!this.unlockedEnemies.includes(bossId) && this.shouldAutoUnlock(bossId)) {
-        this.unlockedEnemies.push(bossId)
-        newUnlocks.push(bossId)
-      }
-    })
-
-    if (newUnlocks.length > 0) {
-      console.log('Auto-unlocked bosses:', newUnlocks)
+    try {
+      this.totalBattlesLost++
+      this.gameStats.currentWinStreak = 0
       this.saveGameData()
+    } catch (error) {
+      this.handleError('recordLoss', error)
     }
-
-    return newUnlocks
   },
 
-  /**
-   * Get recommended boss for player level
-   * @returns {Boss|null} Recommended boss or null
-   */
-  getRecommendedBoss() {
-    const availableBosses = this.bossTemplates.filter(boss =>
-      this.unlockedEnemies.includes(boss.id)
-    )
+  // Boss system methods with error handling
+  getBossesByTier(tier) {
+    try {
+      if (!tier) {
+        throw new Error('Tier parameter is required')
+      }
+      return this.bossTemplates.filter(boss => boss && boss.tier === tier) || []
+    } catch (error) {
+      this.handleError('getBossesByTier', error)
+      return []
+    }
+  },
 
-    if (availableBosses.length === 0) return null
+  shouldAutoUnlock(bossId) {
+    try {
+      if (!bossId) {
+        throw new Error('Boss ID is required')
+      }
+      
+      const autoUnlockRules = {
+        'forest_spider': () => this.defeatedBosses.includes('giant_rat'),
+        'bandit_leader': () => this.defeatedBosses.includes('forest_spider'),
+        'orc_warrior': () => this.playerLevel >= 4 && this.defeatedBosses.length >= 2,
+        'ice_elemental': () => this.playerLevel >= 5 && this.defeatedBosses.includes('orc_warrior'),
+        'troll_shaman': () => this.playerLevel >= 6 && this.defeatedBosses.includes('ice_elemental'),
+        'dragon': () => this.playerLevel >= 7 && this.defeatedBosses.includes('troll_shaman'),
+        'necromancer': () => this.playerLevel >= 8 && this.defeatedBosses.includes('dragon'),
+        'demon_lord': () => this.playerLevel >= 9 && this.defeatedBosses.includes('necromancer'),
+        'golem': () => this.playerLevel >= 11 && this.defeatedBosses.includes('demon_lord'),
+        'shadow_lord': () => this.playerLevel >= 12 && this.defeatedBosses.includes('golem'),
+        'lich_king': () => this.playerLevel >= 14 && this.defeatedBosses.includes('shadow_lord'),
+        'dragon_king': () => this.playerLevel >= 16 && this.defeatedBosses.includes('lich_king'),
+        'void_emperor': () => this.playerLevel >= 18 && this.defeatedBosses.includes('dragon_king')
+      }
 
-    // Find boss closest to player level but not too easy
-    const sortedByLevel = availableBosses
-      .filter(boss => boss.level >= this.playerLevel - 2) // Don't recommend bosses that are too easy
-      .sort((a, b) => {
-        const aDiff = Math.abs(a.level - this.playerLevel)
-        const bDiff = Math.abs(b.level - this.playerLevel)
-        return aDiff - bDiff
+      const rule = autoUnlockRules[bossId]
+      return rule ? rule() : false
+    } catch (error) {
+      this.handleError('shouldAutoUnlock', error)
+      return false
+    }
+  },
+
+  processAutoUnlocks() {
+    try {
+      const allBossIds = [
+        'giant_rat', 'forest_spider', 'bandit_leader', 'orc_warrior', 'ice_elemental',
+        'troll_shaman', 'dragon', 'necromancer', 'demon_lord', 'golem', 'shadow_lord',
+        'lich_king', 'dragon_king', 'void_emperor'
+      ]
+
+      let newUnlocks = []
+
+      allBossIds.forEach(bossId => {
+        if (!this.unlockedEnemies.includes(bossId) && this.shouldAutoUnlock(bossId)) {
+          this.unlockedEnemies.push(bossId)
+          newUnlocks.push(bossId)
+        }
       })
 
-    return sortedByLevel[0] || availableBosses[0]
-  },
-
-  /**
-   * Get player's combat rating based on character levels
-   * @returns {number} Combat rating
-   */
-  getCombatRating() {
-    let totalLevels = 0
-    let characterCount = 0
-    let totalStats = 0
-
-    this.paladins.forEach(paladin => {
-      totalLevels += paladin.level
-      totalStats += paladin.maxHealth + paladin.attack + paladin.defense
-      characterCount++
-    })
-
-    this.archers.forEach(archer => {
-      totalLevels += archer.level
-      totalStats += archer.maxHealth + archer.attack + archer.defense
-      characterCount++
-    })
-
-    const averageLevel = characterCount > 0 ? totalLevels / characterCount : 1
-    const averageStats = characterCount > 0 ? totalStats / characterCount : 100
-
-    return Math.floor(averageLevel * 10 + this.playerLevel * 5 + averageStats / 10)
-  },
-
-  // Achievement system
-  checkAchievements() {
-    this.achievements.forEach(achievement => {
-      if (!achievement.unlocked) {
-        let shouldUnlock = false
-
-        switch (achievement.id) {
-          case 'first_victory':
-            shouldUnlock = this.totalBattlesWon >= 1
-            break
-          case 'boss_slayer':
-            shouldUnlock = this.defeatedBosses.length >= 5
-            break
-          case 'gold_hoarder':
-            shouldUnlock = this.gold >= 1000
-            break
-          case 'level_10':
-            shouldUnlock = this.playerLevel >= 10
-            break
-          case 'legendary_slayer':
-            shouldUnlock = this.defeatedBosses.some(bossId => {
-              const boss = this.bossTemplates.find(b => b.id === bossId)
-              return boss && boss.tier === 'Legendary'
-            })
-            break
-        }
-
-        if (shouldUnlock) {
-          achievement.unlocked = true
-          this.notifyAchievement(achievement)
-        }
+      if (newUnlocks.length > 0) {
+        console.log('Auto-unlocked bosses:', newUnlocks)
+        this.saveGameData()
       }
-    })
+
+      return newUnlocks
+    } catch (error) {
+      this.handleError('processAutoUnlocks', error)
+      return []
+    }
+  },
+
+  getRecommendedBoss() {
+    try {
+      const availableBosses = this.bossTemplates.filter(boss =>
+        boss && this.unlockedEnemies.includes(boss.id)
+      )
+
+      if (availableBosses.length === 0) return null
+
+      const sortedByLevel = availableBosses
+        .filter(boss => boss.level >= this.playerLevel - 2)
+        .sort((a, b) => {
+          const aDiff = Math.abs(a.level - this.playerLevel)
+          const bDiff = Math.abs(b.level - this.playerLevel)
+          return aDiff - bDiff
+        })
+
+      return sortedByLevel[0] || availableBosses[0]
+    } catch (error) {
+      this.handleError('getRecommendedBoss', error)
+      return null
+    }
+  },
+
+  getCombatRating() {
+    try {
+      let totalLevels = 0
+      let characterCount = 0
+      let totalStats = 0
+
+      this.paladins.forEach(paladin => {
+        if (paladin) {
+          totalLevels += paladin.level || 1
+          totalStats += (paladin.maxHealth || 0) + (paladin.attack || 0) + (paladin.defense || 0)
+          characterCount++
+        }
+      })
+
+      this.archers.forEach(archer => {
+        if (archer) {
+          totalLevels += archer.level || 1
+          totalStats += (archer.maxHealth || 0) + (archer.attack || 0) + (archer.defense || 0)
+          characterCount++
+        }
+      })
+
+      const averageLevel = characterCount > 0 ? totalLevels / characterCount : 1
+      const averageStats = characterCount > 0 ? totalStats / characterCount : 100
+
+      return Math.floor(averageLevel * 10 + this.playerLevel * 5 + averageStats / 10)
+    } catch (error) {
+      this.handleError('getCombatRating', error)
+      return 0
+    }
+  },
+
+  // Achievement system with error handling
+  checkAchievements() {
+    try {
+      this.achievements.forEach(achievement => {
+        if (!achievement.unlocked) {
+          let shouldUnlock = false
+
+          switch (achievement.id) {
+            case 'first_victory':
+              shouldUnlock = this.totalBattlesWon >= 1
+              break
+            case 'boss_slayer':
+              shouldUnlock = this.defeatedBosses.length >= 5
+              break
+            case 'gold_hoarder':
+              shouldUnlock = this.gold >= 1000
+              break
+            case 'level_10':
+              shouldUnlock = this.playerLevel >= 10
+              break
+            case 'legendary_slayer':
+              shouldUnlock = this.defeatedBosses.some(bossId => {
+                const boss = this.bossTemplates.find(b => b && b.id === bossId)
+                return boss && boss.tier === 'Legendary'
+              })
+              break
+          }
+
+          if (shouldUnlock) {
+            achievement.unlocked = true
+            this.notifyAchievement(achievement)
+          }
+        }
+      })
+    } catch (error) {
+      this.handleError('checkAchievements', error)
+    }
   },
 
   notifyAchievement(achievement) {
-    console.log(`🏆 Achievement Unlocked: ${achievement.name} - ${achievement.description}`)
-    // In a real game, you'd show a notification popup here
-  },
-
-  // Utility Methods
-  isCharacterUnlocked(id) {
-    return this.unlockedCharacters.includes(id)
-  },
-
-  getUnlockCost(id) {
-    return this.characterCosts[id] || 0
-  },
-
-  getBossDefeatedCount(bossId) {
-    return this.bossDefeatedCount[bossId] || 0
-  },
-
-  getGameStats() {
-    return {
-      gold: this.gold,
-      playerLevel: this.playerLevel,
-      highestLevel: this.highestLevel,
-      totalGoldEarned: this.totalGoldEarned,
-      totalBattlesWon: this.totalBattlesWon,
-      totalBattlesLost: this.totalBattlesLost,
-      totalXPEarned: this.totalXPEarned,
-      unlockedCharactersCount: this.unlockedCharacters.length,
-      defeatedBossesCount: this.defeatedBosses.length,
-      totalCharactersCount: this.playerTemplates.length,
-      combatRating: this.getCombatRating(),
-      winRate: this.totalBattlesWon + this.totalBattlesLost > 0 ?
-        (this.totalBattlesWon / (this.totalBattlesWon + this.totalBattlesLost) * 100).toFixed(1) : 0,
-      currentWinStreak: this.gameStats.currentWinStreak,
-      longestWinStreak: this.gameStats.longestWinStreak
+    try {
+      console.log(`🏆 Achievement Unlocked: ${achievement.name} - ${achievement.description}`)
+      // In a real game, you'd show a notification popup here
+    } catch (error) {
+      this.handleError('notifyAchievement', error)
     }
   },
 
-  // Session tracking
+  // Error handling system
+  handleError(context, error) {
+    const errorInfo = {
+      context,
+      message: error.message,
+      timestamp: new Date().toISOString(),
+      stack: error.stack
+    }
+
+    console.error(`[AppState Error in ${context}]:`, errorInfo)
+    
+    this.errorState.lastError = errorInfo
+    this.errorState.errorCount++
+
+    // Track critical errors that might break the game
+    const criticalContexts = ['saveGameData', 'loadGameData', 'battleState']
+    if (criticalContexts.some(ctx => context.includes(ctx))) {
+      this.errorState.criticalErrors.push(errorInfo)
+    }
+
+    // Auto-recovery for certain errors
+    this.attemptErrorRecovery(context, error)
+  },
+
+  attemptErrorRecovery(context, error) {
+    try {
+      switch (context) {
+        case 'saveGameData':
+          // Attempt backup save
+          console.warn('Attempting backup save due to save error')
+          setTimeout(() => this.saveGameData(), 1000)
+          break
+        case 'loadGameData':
+          // Reset to safe defaults
+          console.warn('Resetting to safe defaults due to load error')
+          this.resetToSafeDefaults()
+          break
+        default:
+          // Generic recovery - validate critical state
+          this.validateCriticalState()
+          break
+      }
+    } catch (recoveryError) {
+      console.error('Error recovery failed:', recoveryError)
+    }
+  },
+
+  validateCriticalState() {
+    try {
+      // Ensure critical values are valid
+      if (typeof this.gold !== 'number' || this.gold < 0) {
+        this.gold = 0
+      }
+      if (typeof this.playerLevel !== 'number' || this.playerLevel < 1) {
+        this.playerLevel = 1
+      }
+      if (!Array.isArray(this.paladins)) {
+        this.paladins = []
+      }
+      if (!Array.isArray(this.archers)) {
+        this.archers = []
+      }
+    } catch (error) {
+      console.error('Critical state validation failed:', error)
+    }
+  },
+
+  resetToSafeDefaults() {
+    try {
+      Object.assign(this, createGameProgressState())
+      console.log('Reset to safe defaults completed')
+    } catch (error) {
+      console.error('Failed to reset to safe defaults:', error)
+    }
+  },
+
+  // Session tracking with error handling
   startSession() {
-    this.gameStats.sessionsPlayed++
-    this.gameStats.lastPlayDate = new Date().toISOString()
+    try {
+      this.gameStats.sessionsPlayed++
+      this.gameStats.lastPlayDate = new Date().toISOString()
 
-    if (!this.gameStats.firstPlayDate) {
-      this.gameStats.firstPlayDate = new Date().toISOString()
+      if (!this.gameStats.firstPlayDate) {
+        this.gameStats.firstPlayDate = new Date().toISOString()
+      }
+
+      this.saveGameData()
+    } catch (error) {
+      this.handleError('startSession', error)
     }
-
-    this.saveGameData()
   },
 
   updatePlayTime(minutes) {
-    this.gameStats.totalPlayTime += minutes
-    this.saveGameData()
+    try {
+      if (typeof minutes !== 'number' || minutes < 0) {
+        throw new Error('Play time must be a positive number')
+      }
+      this.gameStats.totalPlayTime += minutes
+      this.saveGameData()
+    } catch (error) {
+      this.handleError('updatePlayTime', error)
+    }
   },
 
-  // Save/Load Methods
+  // Enhanced Save/Load Methods with better error handling
   saveGameData() {
-    const gameData = {
-      // Character data
-      paladins: this.paladins.map(p => ({
-        id: p.id,
-        name: p.name,
-        title: p.title,
-        maxHealth: p.maxHealth,
-        currentHealth: p.currentHealth,
-        attack: p.attack,
-        defense: p.defense,
-        holyPower: p.holyPower,
-        level: p.level,
-        experience: p.experience,
-        imageUrl: p.imageUrl,
-        description: p.description,
-        skills: p.skills,
-        inventory: p.inventory,
-        isActive: p.isActive,
-        characterClass: p.characterClass
-      })),
-      archers: this.archers.map(a => ({
-        id: a.id,
-        name: a.name,
-        title: a.title,
-        maxHealth: a.maxHealth,
-        currentHealth: a.currentHealth,
-        attack: a.attack,
-        defense: a.defense,
-        range: a.range,
-        level: a.level,
-        experience: a.experience,
-        imageUrl: a.imageUrl,
-        description: a.description,
-        skills: a.skills,
-        inventory: a.inventory,
-        isActive: a.isActive,
-        characterClass: a.characterClass
-      })),
-
-      // Game progression
-      gold: this.gold,
-      playerLevel: this.playerLevel,
-      highestLevel: this.highestLevel,
-      totalGoldEarned: this.totalGoldEarned,
-      totalBattlesWon: this.totalBattlesWon,
-      totalBattlesLost: this.totalBattlesLost,
-      totalXPEarned: this.totalXPEarned,
-
-      // Unlocks and progression
-      unlockedCharacters: this.unlockedCharacters,
-      unlockedEnemies: this.unlockedEnemies,
-      defeatedBosses: this.defeatedBosses,
-      bossDefeatedCount: this.bossDefeatedCount,
-
-      // Selections
-      selectedHero: this.selectedHero,
-      selectedEnemy: this.selectedEnemy,
-
-      // Game progress
-      gameProgress: this.gameProgress,
-
-      // Settings and preferences
-      gameSettings: this.gameSettings,
-
-      // Achievements
-      achievements: this.achievements,
-
-      // Statistics
-      gameStats: this.gameStats
-    }
-
     try {
+      const gameData = {
+        // Character data with null safety
+        paladins: this.paladins.map(p => p ? ({
+          id: p.id,
+          name: p.name,
+          title: p.title,
+          maxHealth: p.maxHealth,
+          currentHealth: p.currentHealth,
+          attack: p.attack,
+          defense: p.defense,
+          holyPower: p.holyPower,
+          level: p.level,
+          experience: p.experience,
+          imageUrl: p.imageUrl,
+          description: p.description,
+          skills: p.skills || [],
+          inventory: p.inventory || [],
+          isActive: p.isActive,
+          characterClass: p.characterClass
+        }) : null).filter(Boolean),
+
+        archers: this.archers.map(a => a ? ({
+          id: a.id,
+          name: a.name,
+          title: a.title,
+          maxHealth: a.maxHealth,
+          currentHealth: a.currentHealth,
+          attack: a.attack,
+          defense: a.defense,
+          range: a.range,
+          level: a.level,
+          experience: a.experience,
+          imageUrl: a.imageUrl,
+          description: a.description,
+          skills: a.skills || [],
+          inventory: a.inventory || [],
+          isActive: a.isActive,
+          characterClass: a.characterClass
+        }) : null).filter(Boolean),
+
+        // Game progression
+        gold: this.gold,
+        playerLevel: this.playerLevel,
+        highestLevel: this.highestLevel,
+        totalGoldEarned: this.totalGoldEarned,
+        totalBattlesWon: this.totalBattlesWon,
+        totalBattlesLost: this.totalBattlesLost,
+        totalXPEarned: this.totalXPEarned,
+
+        // Unlocks and progression
+        unlockedCharacters: this.unlockedCharacters || [],
+        unlockedEnemies: this.unlockedEnemies || [],
+        defeatedBosses: this.defeatedBosses || [],
+        bossDefeatedCount: this.bossDefeatedCount || {},
+
+        // Selections (can be null)
+        selectedHero: this.selectedHero,
+        selectedEnemy: this.selectedEnemy,
+
+        // Game progress
+        gameProgress: {
+          currentQuest: this.currentQuest,
+          completedQuests: this.completedQuests || [],
+          currentLocation: this.currentLocation || 'town',
+          visitedLocations: this.visitedLocations || ['town'],
+          gameDay: this.gameDay || 1
+        },
+
+        // Settings and preferences
+        gameSettings: this.gameSettings || {},
+
+        // Achievements
+        achievements: this.achievements || [],
+
+        // Statistics
+        gameStats: this.gameStats || {},
+
+        // Save metadata
+        saveVersion: '1.0',
+        saveTimestamp: new Date().toISOString()
+      }
+
       localStorage.setItem('bossBattleData', JSON.stringify(gameData))
       console.log('Game data saved successfully')
+      return true
     } catch (error) {
-      console.error('Failed to save game data:', error)
+      this.handleError('saveGameData', error)
+      return false
     }
   },
 
   loadGameData() {
-    const savedData = localStorage.getItem('bossBattleData')
-    if (savedData) {
-      try {
-        const gameData = JSON.parse(savedData)
-
-        // Load character data
-        if (gameData.paladins) {
-          this.paladins = gameData.paladins.map(p => new Paladin(p))
-        }
-        if (gameData.archers) {
-          this.archers = gameData.archers.map(a => new Archer(a))
-        }
-
-        // Load game progression
-        this.gold = gameData.gold || 100
-        this.playerLevel = gameData.playerLevel || 1
-        this.highestLevel = gameData.highestLevel || 1
-        this.totalGoldEarned = gameData.totalGoldEarned || 0
-        this.totalBattlesWon = gameData.totalBattlesWon || 0
-        this.totalBattlesLost = gameData.totalBattlesLost || 0
-        this.totalXPEarned = gameData.totalXPEarned || 0
-
-        // Load unlocks
-        this.unlockedCharacters = gameData.unlockedCharacters || ['paladin', 'knight']
-        this.unlockedEnemies = gameData.unlockedEnemies || ['giant_rat', 'forest_spider']
-        this.defeatedBosses = gameData.defeatedBosses || []
-        this.bossDefeatedCount = gameData.bossDefeatedCount || {}
-
-        // Load selections
-        this.selectedHero = gameData.selectedHero || null
-        this.selectedEnemy = gameData.selectedEnemy || null
-
-        // Load game progress
-        this.gameProgress = gameData.gameProgress || {
-          currentQuest: null,
-          completedQuests: [],
-          currentLocation: 'town',
-          visitedLocations: ['town'],
-          gameDay: 1
-        }
-
-        // Load settings
-        this.gameSettings = gameData.gameSettings || {
-          soundEnabled: true,
-          musicEnabled: true,
-          animationsEnabled: true,
-          autoSave: true,
-          difficulty: 'normal',
-          showTutorials: true
-        }
-
-        // Load achievements
-        if (gameData.achievements) {
-          this.achievements = gameData.achievements
-        }
-
-        // Load statistics
-        this.gameStats = gameData.gameStats || {
-          totalPlayTime: 0,
-          sessionsPlayed: 0,
-          lastPlayDate: null,
-          firstPlayDate: null,
-          favoriteCharacterClass: null,
-          mostDefeatedBoss: null,
-          longestWinStreak: 0,
-          currentWinStreak: 0
-        }
-
-        console.log('Game data loaded successfully')
-      } catch (error) {
-        console.error('Error loading game data:', error)
-        console.warn('Using default game data due to corrupted save')
+    try {
+      const savedData = localStorage.getItem('bossBattleData')
+      if (!savedData) {
+        console.log('No saved game data found, using defaults')
+        this.startSession()
+        return false
       }
-    } else {
-      console.log('No saved game data found, using defaults')
-    }
 
-    // Start session tracking
-    this.startSession()
+      const gameData = JSON.parse(savedData)
+
+      // Validate save data structure
+      if (!gameData || typeof gameData !== 'object') {
+        throw new Error('Invalid save data structure')
+      }
+
+      // Load character data with validation
+      if (Array.isArray(gameData.paladins)) {
+        this.paladins = gameData.paladins.map(p => new Paladin(p))
+      }
+      if (Array.isArray(gameData.archers)) {
+        this.archers = gameData.archers.map(a => new Archer(a))
+      }
+
+      // Load game progression with defaults
+      this.gold = Math.max(0, gameData.gold || 100)
+      this.playerLevel = Math.max(1, gameData.playerLevel || 1)
+      this.highestLevel = Math.max(1, gameData.highestLevel || 1)
+      this.totalGoldEarned = Math.max(0, gameData.totalGoldEarned || 0)
+      this.totalBattlesWon = Math.max(0, gameData.totalBattlesWon || 0)
+      this.totalBattlesLost = Math.max(0, gameData.totalBattlesLost || 0)
+      this.totalXPEarned = Math.max(0, gameData.totalXPEarned || 0)
+
+      // Load unlocks with defaults
+      this.unlockedCharacters = Array.isArray(gameData.unlockedCharacters) 
+        ? gameData.unlockedCharacters 
+        : ['paladin', 'knight']
+      this.unlockedEnemies = Array.isArray(gameData.unlockedEnemies) 
+        ? gameData.unlockedEnemies 
+        : ['giant_rat', 'forest_spider']
+      this.defeatedBosses = Array.isArray(gameData.defeatedBosses) 
+        ? gameData.defeatedBosses 
+        : []
+      this.bossDefeatedCount = gameData.bossDefeatedCount || {}
+
+      // Load selections (can be null)
+      this.selectedHero = gameData.selectedHero || null
+      this.selectedEnemy = gameData.selectedEnemy || null
+
+      // Load nested objects with defaults
+      const defaultGameProgress = {
+        currentQuest: null,
+        completedQuests: [],
+        currentLocation: 'town',
+        visitedLocations: ['town'],
+        gameDay: 1
+      }
+      this.gameProgress = { ...defaultGameProgress, ...(gameData.gameProgress || {}) }
+
+      const defaultGameSettings = {
+        soundEnabled: true,
+        musicEnabled: true,
+        animationsEnabled: true,
+        autoSave: true,
+        difficulty: 'normal',
+        showTutorials: true
+      }
+      this.gameSettings = { ...defaultGameSettings, ...(gameData.gameSettings || {}) }
+
+      // Load achievements with validation
+      if (Array.isArray(gameData.achievements)) {
+        this.achievements = gameData.achievements
+      }
+
+      // Load statistics with defaults
+      const defaultGameStats = {
+        totalPlayTime: 0,
+        sessionsPlayed: 0,
+        lastPlayDate: null,
+        firstPlayDate: null,
+        favoriteCharacterClass: null,
+        mostDefeatedBoss: null,
+        longestWinStreak: 0,
+        currentWinStreak: 0
+      }
+      this.gameStats = { ...defaultGameStats, ...(gameData.gameStats || {}) }
+
+      console.log('Game data loaded successfully')
+      this.startSession()
+      return true
+    } catch (error) {
+      this.handleError('loadGameData', error)
+      console.warn('Using default game data due to corrupted save')
+      this.startSession()
+      return false
+    }
+  },
+
+  // Utility Methods with validation
+  isCharacterUnlocked(id) {
+    try {
+      return Array.isArray(this.unlockedCharacters) && this.unlockedCharacters.includes(id)
+    } catch (error) {
+      this.handleError('isCharacterUnlocked', error)
+      return false
+    }
+  },
+
+  getUnlockCost(id) {
+    try {
+      return this.characterCosts[id] || 0
+    } catch (error) {
+      this.handleError('getUnlockCost', error)
+      return 0
+    }
+  },
+
+  getBossDefeatedCount(bossId) {
+    try {
+      return this.bossDefeatedCount[bossId] || 0
+    } catch (error) {
+      this.handleError('getBossDefeatedCount', error)
+      return 0
+    }
+  },
+
+  getGameStats() {
+    try {
+      return {
+        gold: this.gold,
+        playerLevel: this.playerLevel,
+        highestLevel: this.highestLevel,
+        totalGoldEarned: this.totalGoldEarned,
+        totalBattlesWon: this.totalBattlesWon,
+        totalBattlesLost: this.totalBattlesLost,
+        totalXPEarned: this.totalXPEarned,
+        unlockedCharactersCount: this.unlockedCharacters.length,
+        defeatedBossesCount: this.defeatedBosses.length,
+        totalCharactersCount: this.playerTemplates.length,
+        combatRating: this.getCombatRating(),
+        winRate: this.totalBattlesWon + this.totalBattlesLost > 0 ?
+          (this.totalBattlesWon / (this.totalBattlesWon + this.totalBattlesLost) * 100).toFixed(1) : 0,
+        currentWinStreak: this.gameStats.currentWinStreak,
+        longestWinStreak: this.gameStats.longestWinStreak
+      }
+    } catch (error) {
+      this.handleError('getGameStats', error)
+      return {}
+    }
   },
 
   resetProgress() {
-    // Reset all game data to defaults
-    this.paladins = [
-      new Paladin({
-        name: 'Sir Stellaris',
-        title: 'Star Guardian',
-        maxHealth: 120,
-        attack: 28,
-        defense: 22,
-        holyPower: 40,
-        level: 1,
-        experience: 0,
-        imageUrl: '/src/assets/img/knight-star-shield.jpg',
-        description: 'A young paladin chosen by celestial forces.',
-        skills: ['Smite Evil'],
-        inventory: ['Golden Sword of Light', 'Star Shield']
+    try {
+      // Reset all game data to defaults with error handling
+      Object.assign(this, createCharacterState())
+      Object.assign(this, createGameProgressState())
+      Object.assign(this, createEnemyState())
+      Object.assign(this, createBattleState())
+      
+      // Reset achievements
+      this.achievements.forEach(achievement => {
+        achievement.unlocked = false
       })
-    ]
 
-    this.archers = [
-      new Archer({
-        name: 'Sylvia',
-        title: 'Forest Shadow',
-        maxHealth: 85,
-        attack: 32,
-        defense: 12,
-        range: 5,
-        level: 1,
-        experience: 0,
-        imageUrl: '/src/assets/img/archer-forest.jpg',
-        description: 'A cheerful but deadly archer.',
-        skills: ['Quick Shot'],
-        inventory: ['Wooden Bow', 'Quiver of Arrows']
+      // Reset game stats
+      Object.assign(this.gameStats, {
+        totalPlayTime: 0,
+        sessionsPlayed: 0,
+        lastPlayDate: null,
+        firstPlayDate: null,
+        favoriteCharacterClass: null,
+        mostDefeatedBoss: null,
+        longestWinStreak: 0,
+        currentWinStreak: 0
       })
-    ]
 
-    this.activeCharacter = null
-    this.gold = 100
-    this.playerLevel = 1
-    this.highestLevel = 1
-    this.totalGoldEarned = 0
-    this.totalBattlesWon = 0
-    this.totalBattlesLost = 0
-    this.totalXPEarned = 0
-    this.unlockedCharacters = ['paladin', 'knight']
-    this.unlockedEnemies = ['giant_rat', 'forest_spider']
-    this.defeatedBosses = []
-    this.bossDefeatedCount = {}
-    this.selectedHero = null
-    this.selectedEnemy = null
-
-    // Reset achievements
-    this.achievements.forEach(achievement => {
-      achievement.unlocked = false
-    })
-
-    // Reset game stats
-    this.gameStats = {
-      totalPlayTime: 0,
-      sessionsPlayed: 0,
-      lastPlayDate: null,
-      firstPlayDate: null,
-      favoriteCharacterClass: null,
-      mostDefeatedBoss: null,
-      longestWinStreak: 0,
-      currentWinStreak: 0
+      this.saveGameData()
+      console.log('Game progress has been reset')
+      return 'Progress has been reset.'
+    } catch (error) {
+      this.handleError('resetProgress', error)
+      return 'Failed to reset progress.'
     }
-
-    this.saveGameData()
-    console.log('Game progress has been reset')
-    return 'Progress has been reset.'
   },
 
-  // Export/Import functionality
+  // Export/Import functionality with validation
   exportGameData() {
-    const gameData = localStorage.getItem('bossBattleData')
-    if (gameData) {
-      return btoa(gameData) // Base64 encode for sharing
+    try {
+      const gameData = localStorage.getItem('bossBattleData')
+      if (gameData) {
+        return btoa(gameData) // Base64 encode for sharing
+      }
+      return null
+    } catch (error) {
+      this.handleError('exportGameData', error)
+      return null
     }
-    return null
   },
 
   importGameData(encodedData) {
     try {
+      if (!encodedData || typeof encodedData !== 'string') {
+        throw new Error('Invalid encoded data')
+      }
+
       const decodedData = atob(encodedData) // Base64 decode
       const gameData = JSON.parse(decodedData)
 
       // Validate the data structure
-      if (gameData.gold !== undefined && gameData.playerLevel !== undefined) {
-        localStorage.setItem('bossBattleData', decodedData)
-        this.loadGameData()
-        return { success: true, message: 'Game data imported successfully!' }
-      } else {
-        return { success: false, message: 'Invalid game data format' }
+      if (typeof gameData !== 'object' || gameData === null) {
+        throw new Error('Invalid game data format')
       }
+
+      // Additional validation for required fields
+      if (gameData.gold === undefined || gameData.playerLevel === undefined) {
+        throw new Error('Missing required game data fields')
+      }
+
+      // Backup current save before importing
+      const currentSave = localStorage.getItem('bossBattleData')
+      if (currentSave) {
+        localStorage.setItem('bossBattleDataBackup', currentSave)
+      }
+
+      localStorage.setItem('bossBattleData', decodedData)
+      this.loadGameData()
+      return { success: true, message: 'Game data imported successfully!' }
     } catch (error) {
+      this.handleError('importGameData', error)
       return { success: false, message: 'Failed to import game data: ' + error.message }
     }
   },
 
-  // Aliases for backward compatibility
-  get player() { return this.battleState.player },
-  set player(value) { this.battleState.player = value },
+  // Get error information for debugging
+  getErrorInfo() {
+    return {
+      lastError: this.errorState.lastError,
+      errorCount: this.errorState.errorCount,
+      criticalErrors: this.errorState.criticalErrors,
+      hasErrors: this.errorState.errorCount > 0
+    }
+  },
 
-  get boss() { return this.battleState.boss },
-  set boss(value) { this.battleState.boss = value },
-
-  get battleActive() { return this.battleState.battleActive },
-  set battleActive(value) { this.battleState.battleActive = value },
-
-  get turnCount() { return this.battleState.turnCount },
-  set turnCount(value) { this.battleState.turnCount = value },
-
-  get playerTurn() { return this.battleState.playerTurn },
-  set playerTurn(value) { this.battleState.playerTurn = value },
-
-  get battleLog() { return this.battleState.battleLog },
-  set battleLog(value) { this.battleState.battleLog = value },
-
-  get playerBarrier() { return this.battleState.playerBarrier },
-  set playerBarrier(value) { this.battleState.playerBarrier = value },
-
-  get playerDodging() { return this.battleState.playerDodging },
-  set playerDodging(value) { this.battleState.playerDodging = value },
-
-  get playerBurning() { return this.battleState.playerBurning },
-  set playerBurning(value) { this.battleState.playerBurning = value },
-
-  get playerSlowed() { return this.battleState.playerSlowed },
-  set playerSlowed(value) { this.battleState.playerSlowed = value },
-
-  get bossStunned() { return this.battleState.bossStunned },
-  set bossStunned(value) { this.battleState.bossStunned = value }
+  // Clear error state
+  clearErrors() {
+    this.errorState.lastError = null
+    this.errorState.errorCount = 0
+    this.errorState.criticalErrors = []
+  }
 })
